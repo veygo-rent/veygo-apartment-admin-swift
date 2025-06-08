@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		8E03DFA42DF5175A00F74DC5 /* Stripe in Frameworks */ = {isa = PBXBuildFile; productRef = 8E03DFA32DF5175A00F74DC5 /* Stripe */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		8E03DF122DF510AF00F74DC5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -30,11 +34,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		8E03DF062DF510AE00F74DC5 /* veygo-apartment-admin-swift */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "veygo-apartment-admin-swift";
-			sourceTree = "<group>";
-		};
 		8E03DF142DF510AF00F74DC5 /* veygo-apartment-admin-swiftTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "veygo-apartment-admin-swiftTests";
@@ -45,6 +44,11 @@
 			path = "veygo-apartment-admin-swiftUITests";
 			sourceTree = "<group>";
 		};
+		8E03E0242DF51FD100F74DC5 /* veygo-apartment-admin-swift */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "veygo-apartment-admin-swift";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8E03DFA42DF5175A00F74DC5 /* Stripe in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,7 +80,7 @@
 		8E03DEFB2DF510AE00F74DC5 = {
 			isa = PBXGroup;
 			children = (
-				8E03DF062DF510AE00F74DC5 /* veygo-apartment-admin-swift */,
+				8E03E0242DF51FD100F74DC5 /* veygo-apartment-admin-swift */,
 				8E03DF142DF510AF00F74DC5 /* veygo-apartment-admin-swiftTests */,
 				8E03DF1E2DF510AF00F74DC5 /* veygo-apartment-admin-swiftUITests */,
 				8E03DF052DF510AE00F74DC5 /* Products */,
@@ -108,10 +113,11 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				8E03DF062DF510AE00F74DC5 /* veygo-apartment-admin-swift */,
+				8E03E0242DF51FD100F74DC5 /* veygo-apartment-admin-swift */,
 			);
 			name = "veygo-apartment-admin-swift";
 			packageProductDependencies = (
+				8E03DFA32DF5175A00F74DC5 /* Stripe */,
 			);
 			productName = "veygo-apartment-admin-swift";
 			productReference = 8E03DF042DF510AE00F74DC5 /* veygo-apartment-admin-swift.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 8E03DEFB2DF510AE00F74DC5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8E03DFA22DF5175A00F74DC5 /* XCRemoteSwiftPackageReference "stripe-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8E03DF052DF510AE00F74DC5 /* Products */;
 			projectDirPath = "";
@@ -570,6 +579,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8E03DFA22DF5175A00F74DC5 /* XCRemoteSwiftPackageReference "stripe-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stripe/stripe-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 24.15.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8E03DFA32DF5175A00F74DC5 /* Stripe */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8E03DFA22DF5175A00F74DC5 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = Stripe;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8E03DEFC2DF510AE00F74DC5 /* Project object */;
 }
