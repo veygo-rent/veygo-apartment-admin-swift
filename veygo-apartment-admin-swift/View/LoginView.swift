@@ -73,15 +73,13 @@ struct LoginView: View {
                 }.padding(.leading, 10)
 
                 Spacer()
-
-                LegalText()
-                Spacer().frame(height: 15)
             }
             .padding(.horizontal, 400)
             .background(Color("MainBG").ignoresSafeArea())
             .navigationDestination(isPresented: $goToResetView) {
                 Text("TODO: Reset Password")
             }
+            LegalText()
         }
     }
 
