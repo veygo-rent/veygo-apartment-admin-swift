@@ -83,19 +83,8 @@ struct PublishRenter: Codable, Identifiable, Equatable {
     var subscriptionPaymentMethodId: Int?
 }
 
-struct PublishPaymentMethod: Codable, Identifiable {
-    var id: Int
-    var cardholderName: String
-    var maskedCardNumber: String
-    var network: String
-    var expiration: String
-    var nickname: String?
-    var isEnabled: Bool
-    var renterId: Int
-    var lastUsedDateTime: String?
-}
 
-struct PublishApartment: Codable, Identifiable {
+struct Apartment: Codable, Identifiable {
     var id: Int
     var name: String
     var email: String
@@ -117,30 +106,9 @@ struct PublishApartment: Codable, Identifiable {
     var rsaProtectionRate: Double
     var paiProtectionRate: Double
     var salesTaxRate: Double
+    var isOperating: Bool
     var isPublic: Bool
     var uniId: Int
-}
-
-struct PublishVehicle: Codable, Identifiable {
-    var id: Int
-    var vin: String
-    var name: String
-    var licenseNumber: String
-    var licenseState: String
-    var year: String
-    var make: String
-    var model: String
-    var msrpFactor: Double
-    var imageLink: String?
-    var odometer: Int
-    var tankSize: Double
-    var tankLevelPercentage: Int
-    var apartmentId: Int
-}
-
-struct PublishAccessToken: Codable {
-    var token: String
-    var exp: String
 }
 
 class AdminSession: ObservableObject {
@@ -151,8 +119,7 @@ class AdminSession: ObservableObject {
 
     // 用 token 和 user_id 调用后端 API 验证并查找用户信息 对了—>200, 不对—>re-login
     func validateTokenAndFetchUser(completion: @escaping (Bool) -> Void) {
-        let request = veygoCurlRequest(url: "/api/v1/user/retrieve", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        
+        let request = veygoCurlRequest(url: "/api/v1/admin/retrieve", method: "GET", headers: ["auth": "\(token)$\(userId)"])
         if (token == "" || userId == 0) {
             completion(false)
             return
@@ -172,11 +139,15 @@ class AdminSession: ObservableObject {
                 completion(false)
                 return
             }
+            
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            decoder.dateDecodingStrategy = .iso8601
 
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let renter = json["renter"],
+               let renter = json["admin"],
                let renterData = try? JSONSerialization.data(withJSONObject: renter),
-               let decodedUser = try? JSONDecoder().decode(PublishRenter.self, from: renterData) {
+               let decodedUser = try? decoder.decode(PublishRenter.self, from: renterData) {
                 let newToken: String = httpResponse.value(forHTTPHeaderField: "token")!
                 DispatchQueue.main.async {
                     self.user = decodedUser

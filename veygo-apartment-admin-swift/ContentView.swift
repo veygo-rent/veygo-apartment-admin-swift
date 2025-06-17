@@ -18,7 +18,7 @@ struct ContentView: View {
                 LoginView()
                     .transition(.move(edge: .leading))
             } else {
-                Text("TODO: Home Page")
+                AppView()
                     .transition(.move(edge: .trailing))
             }
         }
