@@ -49,6 +49,7 @@ struct LaunchScreenView<Destination: View>: View {
         }
         .fullScreenCover(isPresented: $isActive) {
             destination()  // 进入登录页
+                .interactiveDismissDisabled(true)
         }
     }
 }

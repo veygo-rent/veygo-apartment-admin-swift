@@ -8,48 +8,69 @@
 import SwiftUI
 
 enum Destination: String, Identifiable, Hashable {
-    case overview, apartments, vehicles, renters, setting
-
+    case overview, apartments, vehicles, renters, setting, taxes, toll_companies, reports
     var id: String { self.rawValue }
 }
 
 struct AppView: View {
+    @EnvironmentObject var session: AdminSession
     @State private var selected: Destination = .overview
-    @State private var searchText: String = ""
     
     var body: some View {
-        TabView (selection: $selected) {
-            Tab(value: .overview) {
-                OverviewView()
-            } label: {
-                Label("Overview", systemImage: "chart.pie")
-            }
-            
-            Tab(value: .apartments) {
-                ApartmentView()
-            } label: {
-                Label("Apartments", systemImage: "house")
-            }
-            
-            Tab(value: .vehicles) {
-                VehicleView()
-            } label: {
-                Label("Vehicles", systemImage: "car.rear")
-            }
-            
-            Tab(value: .renters) {
-                RenterView()
-            } label: {
-                Label("Renters", systemImage: "person")
-            }
-            
-            Tab(value: .setting) {
-                SettingView()
-            } label: {
-                Label("Setting", systemImage: "gearshape")
-            }
+        if session.user == nil {
+            Text("Bad Credentials")
+        } else {
+            TabView (selection: $selected) {
+                TabSection("Summary") {
+                    Tab("Overview", systemImage: "chart.pie", value: Destination.overview) {
+                        OverviewView()
+                    }
+                }
+                
+                if session.user!.employeeTier == .admin {
+                    TabSection("Administration") {
+                        Tab("Taxes", systemImage: "percent", value: Destination.taxes) {
+                            Text("Taxes")
+                        }
+                        
+                        Tab("Toll Companies", systemImage: "car.front.waves.down", value: Destination.toll_companies) {
+                            Text("Toll Companies")
+                        }
+                        
+                        Tab("Apartments", systemImage: "building.2", value: Destination.apartments) {
+                            ApartmentView()
+                        }
+                        
+                        Tab("Reports", systemImage: "chart.line.text.clipboard", value: Destination.reports) {
+                            Text("Reports")
+                        }
+                    }
+                }
+                
+                TabSection("Vehicles") {
+                    Tab("Vehicles", systemImage: "car.rear", value: Destination.vehicles) {
+                        VehicleView()
+                    }
+                }
+                
+                TabSection("Trips") {
+                    Tab("Renters", systemImage: "person", value: Destination.renters) {
+                        RenterView()
+                    }
+                }
+                
+                TabSection("Management") {
+                    Tab("Setting", systemImage: "gearshape", value: Destination.setting) {
+                        SettingView()
+                    }
+                }
 
+            }
+            .tabViewStyle(.sidebarAdaptable)
         }
-        .tabViewStyle(.sidebarAdaptable)
     }
+}
+
+#Preview {
+    AppView()
 }
