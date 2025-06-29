@@ -108,12 +108,9 @@ struct LoginView: View {
 
             if httpResponse.statusCode == 200 {
                 let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                decoder.dateDecodingStrategy = .iso8601
                 if let renterData = responseJSON?["admin"],
                    let renterJSON = try? JSONSerialization.data(withJSONObject: renterData),
-                   let decodedUser = try? decoder.decode(PublishRenter.self, from: renterJSON) {
+                   let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
                     // Update AppStorage
                     self.token = extractToken(from: response)!
                     self.userId = decodedUser.id

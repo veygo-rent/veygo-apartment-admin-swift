@@ -139,15 +139,11 @@ class AdminSession: ObservableObject {
                 completion(false)
                 return
             }
-            
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            decoder.dateDecodingStrategy = .iso8601
 
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let renter = json["admin"],
                let renterData = try? JSONSerialization.data(withJSONObject: renter),
-               let decodedUser = try? decoder.decode(PublishRenter.self, from: renterData) {
+               let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterData) {
                 let newToken: String = httpResponse.value(forHTTPHeaderField: "token")!
                 DispatchQueue.main.async {
                     self.user = decodedUser
