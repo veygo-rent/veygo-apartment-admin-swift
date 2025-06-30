@@ -12,3 +12,9 @@ public struct RenterView: View {
         Text("RenterView")
     }
 }
+
+struct RenterCardView: View {
+    var body: some View {
+        Text("RenterCardView")
+    }
+}
