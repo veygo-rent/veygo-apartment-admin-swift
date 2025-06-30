@@ -21,6 +21,8 @@ public struct RenterView: View {
     public var body: some View {
         Table(renters) {
             TableColumn("Name", value: \.name)
+            TableColumn("Phone", value: \.phone)
+            TableColumn("Email", value: \.studentEmail)
         }.onAppear {
             let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
             URLSession.shared.dataTask(with: request) { data, response, error in
