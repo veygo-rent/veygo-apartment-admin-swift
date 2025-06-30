@@ -114,11 +114,6 @@ struct LoginView: View {
                     // Update AppStorage
                     self.token = extractToken(from: response)!
                     self.userId = decodedUser.id
-                    print(decodedUser)
-                    DispatchQueue.main.async {
-                        // Update UserSession
-                        self.session.user = decodedUser
-                    }
                     print("\nLogin successful: \(self.token) \(decodedUser.id)\n")
                     DispatchQueue.main.async {
                         self.session.user = decodedUser
@@ -138,15 +133,6 @@ struct LoginView: View {
         }.resume()
     }
 
-    func extractToken(from response: URLResponse?) -> String? {
-        guard let httpResponse = response as? HTTPURLResponse else {
-            print("Failed to cast response to HTTPURLResponse")
-            return nil
-        }
-        let token = httpResponse.value(forHTTPHeaderField: "token")
-        print("Extracted token from header: \(token ?? "nil")")
-        return token
-    }
 }
 
 #Preview {

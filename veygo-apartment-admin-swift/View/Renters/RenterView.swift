@@ -8,29 +8,59 @@
 import SwiftUI
 
 public struct RenterView: View {
-    struct Person: Identifiable {
-        let givenName: String
-        let familyName: String
-        let emailAddress: String
-        let id = UUID()
+    
+    @State private var showAlert: Bool = false
+    @State private var alertMessage: String = ""
+    
+    @EnvironmentObject var session: AdminSession
+    @AppStorage("token") var token: String = ""
+    @AppStorage("user_id") var userId: Int = 0
 
-
-        var fullName: String { givenName + " " + familyName }
-    }
-
-
-    @State private var people = [
-        Person(givenName: "Juan", familyName: "Chavez", emailAddress: "juanchavez@icloud.com"),
-        Person(givenName: "Mei", familyName: "Chen", emailAddress: "meichen@icloud.com"),
-        Person(givenName: "Tom", familyName: "Clark", emailAddress: "tomclark@icloud.com"),
-        Person(givenName: "Gita", familyName: "Kumar", emailAddress: "gitakumar@icloud.com")
-    ]
+    @State private var renters: [PublishRenter] = []
 
     public var body: some View {
-        Table(people) {
-            TableColumn("Given Name", value: \.givenName)
-            TableColumn("Family Name", value: \.familyName)
-            TableColumn("E-Mail Address", value: \.emailAddress)
+        Table(renters) {
+            TableColumn("Name", value: \.name)
+        }.onAppear {
+            let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        alertMessage = "Network error: \(error.localizedDescription)"
+                        showAlert = true
+                    }
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse, let data = data else {
+                    DispatchQueue.main.async {
+                        alertMessage = "Invalid server response."
+                        showAlert = true
+                    }
+                    return
+                }
+
+                if httpResponse.statusCode == 200 {
+                    let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                    if let renterData = responseJSON?["renters"],
+                       let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
+                       let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
+                        // Update AppStorage
+                        self.token = extractToken(from: response)!
+                        renters = decodedUser
+                    }
+                } else if httpResponse.statusCode == 401 {
+                    DispatchQueue.main.async {
+                        alertMessage = "Email or password is incorrect"
+                        showAlert = true
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                        showAlert = true
+                    }
+                }
+            }.resume()
         }
     }
 }
