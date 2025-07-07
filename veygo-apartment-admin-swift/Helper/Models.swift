@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+internal import Combine
 
 enum VerificationType: String, Codable {
     case email = "Email"
@@ -54,7 +55,7 @@ enum TransactionType: String, Codable {
     case cash = "Cash"
 }
 
-struct PublishRenter: Codable, Identifiable, Equatable {
+struct PublishRenter: Identifiable, Equatable, Codable {
     var id: Int
     var name: String
     var studentEmail: String
@@ -142,17 +143,21 @@ class AdminSession: ObservableObject {
 
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let renter = json["admin"],
-               let renterData = try? JSONSerialization.data(withJSONObject: renter),
-               let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterData) {
-                let newToken: String = httpResponse.value(forHTTPHeaderField: "token")!
-                DispatchQueue.main.async {
-                    self.user = decodedUser
+               let renterData = try? JSONSerialization.data(withJSONObject: renter) {
+                Task { @MainActor in
+                    if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterData) {
+                        let newToken: String = httpResponse.value(forHTTPHeaderField: "token")!
+                        self.user = decodedUser
+                        self.token = newToken
+                        self.userId = decodedUser.id
+                        print("New token refreshed.")
+                        print("User loaded via token: \(decodedUser.name)")
+                        completion(true)
+                    } else {
+                        print("Failed to parse user from response")
+                        completion(false)
+                    }
                 }
-                UserDefaults.standard.set(newToken, forKey: "token")
-                UserDefaults.standard.set(decodedUser.id, forKey: "user_id")
-                print("New token refreshed.")
-                print("User loaded via token: \(decodedUser.name)")
-                completion(true)
             } else {
                 print("Failed to parse user from response")
                 completion(false)
@@ -171,3 +176,4 @@ public func extractToken(from response: URLResponse?) -> String? {
     print("Extracted token from header: \(token ?? "nil")")
     return token
 }
+
