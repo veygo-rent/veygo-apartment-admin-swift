@@ -109,14 +109,15 @@ struct LoginView: View {
             if httpResponse.statusCode == 200 {
                 let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 if let renterData = responseJSON?["admin"],
-                   let renterJSON = try? JSONSerialization.data(withJSONObject: renterData),
-                   let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
-                    // Update AppStorage
-                    self.token = extractToken(from: response)!
-                    self.userId = decodedUser.id
-                    print("\nLogin successful: \(self.token) \(decodedUser.id)\n")
+                   let renterJSON = try? JSONSerialization.data(withJSONObject: renterData) {
                     DispatchQueue.main.async {
-                        self.session.user = decodedUser
+                        if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
+                            // Update AppStorage
+                            self.token = extractToken(from: response)!
+                            self.userId = decodedUser.id
+                            print("\nLogin successful: \(self.token) \(decodedUser.id)\n")
+                            self.session.user = decodedUser
+                        }
                     }
                 }
             } else if httpResponse.statusCode == 401 {
