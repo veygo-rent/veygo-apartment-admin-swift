@@ -27,7 +27,9 @@ public struct RenterView: View {
                 Text(renter.name)
             }
         } detail: {
-            Color.blue
+            if let renterID = seletedRenter, let renter = renters.getRenterDetail(for: renterID) {
+                Text("Renter \(renter)")
+            }
         }
         .onAppear {
             let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
