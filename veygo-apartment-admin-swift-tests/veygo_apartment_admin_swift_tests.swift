@@ -8,6 +8,5 @@
 import Testing
 
 struct veygo_apartment_admin_swift_tests {
-    
-
+    // Tests go here
 }
