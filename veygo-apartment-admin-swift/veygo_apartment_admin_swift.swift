@@ -23,6 +23,7 @@ struct veygo_apartment_admin_swift: App {
         WindowGroup {
             LaunchScreenView(didLoad: $didLoad) {
                 ContentView()
+                    .environmentObject(session)
             }
             .onAppear() {
                 session.validateTokenAndFetchUser { completion in
@@ -31,6 +32,5 @@ struct veygo_apartment_admin_swift: App {
                 didLoad.toggle()
             }
         }
-        .environmentObject(session)
     }
 }

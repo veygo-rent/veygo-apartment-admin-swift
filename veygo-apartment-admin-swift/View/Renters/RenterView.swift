@@ -44,12 +44,18 @@ public struct RenterView: View {
                         Text("\(renter.name)")
                             .foregroundColor(Color("TextBlackPrimary"))
                             .font(.largeTitle)
+                        RenterAttributeView(renter: renter, attribute: .dob)
                         RenterAttributeView(renter: renter, attribute: .email)
                         RenterAttributeView(renter: renter, attribute: .phone)
                     }
                     .padding(.horizontal, 36)
-                    .padding(.vertical, 20)
+                    .padding(.vertical, 48)
                     .background(Color("TextFieldBg").cornerRadius(16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color("TextFieldFrame"), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 26)
                 }
             }
         }
@@ -103,21 +109,46 @@ public struct RenterView: View {
     enum RenterAttributes: String, Equatable {
         case email = "Email"
         case phone = "Phone"
+        case dob = "Date of Birth"
     }
     
     struct RenterAttributeView: View {
         let renter: PublishRenter
         let attribute: RenterAttributes
+        // Formatter to parse "YYYY-MM-DD" dates in UTC
+        private static let utcFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            return formatter
+        }()
+        // Formatter to display dates like "Sep 26, 2001"
+        private static let displayFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d, yyyy"
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            // Keep the date in UTC so the printed day matches the stored string
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            return formatter
+        }()
         var body: some View {
-            HStack {
-                Text("\(attribute.rawValue):")
+            HStack (spacing: 0) {
+                Text("\(attribute.rawValue): ")
                     .foregroundColor(Color("TextBlackPrimary"))
                 switch attribute {
                 case .email:
                     Text("\(renter.studentEmail)")
                         .foregroundColor(Color("TextBlackSecondary"))
-                    if let _emailVerifiedAt = renter.studentEmailExpiration {
-                        Text("Verified")
+                    Spacer()
+                    if let expirationString = renter.studentEmailExpiration,
+                       let expirationDate = Self.utcFormatter.date(from: expirationString) {
+                        if expirationDate >= Date() {
+                            Text("Expires at \(expirationString)")
+                                .foregroundColor(Color("ValidGreen"))
+                        } else {
+                            Text("Expired")
+                                .foregroundColor(Color("InvalidRed"))
+                        }
                     } else {
                         Text("Not Verified")
                             .foregroundColor(Color("InvalidRed"))
@@ -125,11 +156,21 @@ public struct RenterView: View {
                 case .phone:
                     Text("\(renter.phone)")
                         .foregroundColor(Color("TextBlackSecondary"))
+                    Spacer()
                     if renter.phoneIsVerified {
                         Text("Verified")
+                            .foregroundColor(Color("ValidGreen"))
                     } else {
                         Text("Not Verified")
                             .foregroundColor(Color("InvalidRed"))
+                    }
+                case .dob:
+                    if let dobDate = Self.utcFormatter.date(from: renter.dateOfBirth) {
+                        Text(Self.displayFormatter.string(from: dobDate))
+                            .foregroundColor(Color("TextBlackSecondary"))
+                    } else {
+                        Text(renter.dateOfBirth)        // Fallback to raw string if parsing fails
+                            .foregroundColor(Color("TextBlackSecondary"))
                     }
                 }
             }.font(.title3)
