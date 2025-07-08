@@ -26,52 +26,66 @@ public struct RenterView: View {
             List(renters, selection: $seletedRenter) { renter in
                 Text(renter.name)
             }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        refreshRenters()
+                    } label: {
+                        Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
+                    }
+
+                }
+            }
         } detail: {
             if let renterID = seletedRenter, let renter = renters.getRenterDetail(for: renterID) {
-                Text("Renter \(renter)")
+                Text("Renter \(renter.name)\nEmail: \(renter.studentEmail)")
             }
         }
         .onAppear {
-            let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-            URLSession.shared.dataTask(with: request) { data, response, error in
-                if let error = error {
-                    DispatchQueue.main.async {
-                        alertMessage = "Network error: \(error.localizedDescription)"
-                        showAlert = true
-                    }
-                    return
-                }
-
-                guard let httpResponse = response as? HTTPURLResponse, let data = data else {
-                    DispatchQueue.main.async {
-                        alertMessage = "Invalid server response."
-                        showAlert = true
-                    }
-                    return
-                }
-
-                if httpResponse.statusCode == 200 {
-                    let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                    if let renterData = responseJSON?["renters"],
-                       let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
-                       let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
-                        // Update AppStorage
-                        self.token = extractToken(from: response)!
-                        renters = decodedUser
-                    }
-                } else if httpResponse.statusCode == 401 {
-                    DispatchQueue.main.async {
-                        alertMessage = "Email or password is incorrect"
-                        showAlert = true
-                    }
-                } else {
-                    DispatchQueue.main.async {
-                        alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                        showAlert = true
-                    }
-                }
-            }.resume()
+            refreshRenters()
         }
+    }
+    
+    func refreshRenters() {
+        let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    alertMessage = "Network error: \(error.localizedDescription)"
+                    showAlert = true
+                }
+                return
+            }
+
+            guard let httpResponse = response as? HTTPURLResponse, let data = data else {
+                DispatchQueue.main.async {
+                    alertMessage = "Invalid server response."
+                    showAlert = true
+                }
+                return
+            }
+
+            if httpResponse.statusCode == 200 {
+                let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                if let renterData = responseJSON?["renters"],
+                   let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
+                   let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
+                    // Update AppStorage
+                    self.token = extractToken(from: response)!
+                    renters = decodedUser
+                }
+            } else if httpResponse.statusCode == 401 {
+                DispatchQueue.main.async {
+                    alertMessage = "Email or password is incorrect"
+                    showAlert = true
+                }
+            } else {
+                DispatchQueue.main.async {
+                    alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                    showAlert = true
+                }
+            }
+        }.resume()
     }
 }
 
