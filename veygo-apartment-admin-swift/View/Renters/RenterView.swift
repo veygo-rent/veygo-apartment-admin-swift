@@ -15,11 +15,11 @@ public struct RenterView: View {
     @EnvironmentObject var session: AdminSession
     @AppStorage("token") var token: String = ""
     @AppStorage("user_id") var userId: Int = 0
-
+    
     @State private var renters: [PublishRenter] = []
     
     @State private var seletedRenter: PublishRenter.ID? = nil
-
+    
     public var body: some View {
         
         NavigationSplitView {
@@ -33,12 +33,21 @@ public struct RenterView: View {
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
                     }
-
+                    
                 }
             }
         } detail: {
             if let renterID = seletedRenter, let renter = renters.getRenterDetail(for: renterID) {
-                Text("Renter \(renter.name)\nEmail: \(renter.studentEmail)")
+                VStack (alignment: .leading, spacing: 20) {
+                    Text("\(renter.name)")
+                        .foregroundColor(Color("TextBlackPrimary"))
+                        .font(.largeTitle)
+                    RenterAttributeView(renter: renter, attribute: .email)
+                    RenterAttributeView(renter: renter, attribute: .phone)
+                }
+                .padding()
+                .background(Color("MainBG").cornerRadius(20).shadow(radius: 5))
+                
             }
         }
         .onAppear {
@@ -56,7 +65,7 @@ public struct RenterView: View {
                 }
                 return
             }
-
+            
             guard let httpResponse = response as? HTTPURLResponse, let data = data else {
                 DispatchQueue.main.async {
                     alertMessage = "Invalid server response."
@@ -64,7 +73,7 @@ public struct RenterView: View {
                 }
                 return
             }
-
+            
             if httpResponse.statusCode == 200 {
                 let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 if let renterData = responseJSON?["renters"],
@@ -86,6 +95,42 @@ public struct RenterView: View {
                 }
             }
         }.resume()
+    }
+    
+    enum RenterAttributes: String, Equatable {
+        case email = "Email"
+        case phone = "Phone"
+    }
+    
+    struct RenterAttributeView: View {
+        let renter: PublishRenter
+        let attribute: RenterAttributes
+        var body: some View {
+            HStack {
+                Text("\(attribute.rawValue):")
+                    .foregroundColor(Color("TextBlackPrimary"))
+                switch attribute {
+                case .email:
+                    Text("\(renter.studentEmail)")
+                        .foregroundColor(Color("TextBlackSecondary"))
+                    if let _emailVerifiedAt = renter.studentEmailExpiration {
+                        Text("Verified")
+                    } else {
+                        Text("Not Verified")
+                            .foregroundColor(Color("InvalidRed"))
+                    }
+                case .phone:
+                    Text("\(renter.phone)")
+                        .foregroundColor(Color("TextBlackSecondary"))
+                    if renter.phoneIsVerified {
+                        Text("Verified")
+                    } else {
+                        Text("Not Verified")
+                            .foregroundColor(Color("InvalidRed"))
+                    }
+                }
+            }.font(.title3)
+        }
     }
 }
 
