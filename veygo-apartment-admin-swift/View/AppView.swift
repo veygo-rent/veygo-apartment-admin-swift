@@ -23,7 +23,10 @@ struct AppView: View {
             TabView (selection: $selected) {
                 TabSection("Summary") {
                     Tab("Overview", systemImage: "chart.pie", value: Destination.overview) {
-                        OverviewView()
+                        ZStack {
+                            Color("MainBG").ignoresSafeArea()
+                            OverviewView()
+                        }
                     }
                 }
                 
@@ -55,7 +58,10 @@ struct AppView: View {
                 
                 TabSection("Trips") {
                     Tab("Renters", systemImage: "person", value: Destination.renters) {
-                        RenterView()
+                        ZStack {
+                            Color("MainBG").ignoresSafeArea()
+                            RenterView()
+                        }
                     }
                 }
                 

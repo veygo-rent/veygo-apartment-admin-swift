@@ -37,17 +37,20 @@ public struct RenterView: View {
                 }
             }
         } detail: {
-            if let renterID = seletedRenter, let renter = renters.getRenterDetail(for: renterID) {
-                VStack (alignment: .leading, spacing: 20) {
-                    Text("\(renter.name)")
-                        .foregroundColor(Color("TextBlackPrimary"))
-                        .font(.largeTitle)
-                    RenterAttributeView(renter: renter, attribute: .email)
-                    RenterAttributeView(renter: renter, attribute: .phone)
+            ZStack {
+                Color("MainBG").ignoresSafeArea()
+                if let renterID = seletedRenter, let renter = renters.getRenterDetail(for: renterID) {
+                    VStack (alignment: .leading, spacing: 20) {
+                        Text("\(renter.name)")
+                            .foregroundColor(Color("TextBlackPrimary"))
+                            .font(.largeTitle)
+                        RenterAttributeView(renter: renter, attribute: .email)
+                        RenterAttributeView(renter: renter, attribute: .phone)
+                    }
+                    .padding(.horizontal, 36)
+                    .padding(.vertical, 20)
+                    .background(Color("TextFieldBg").cornerRadius(16))
                 }
-                .padding()
-                .background(Color("MainBG").cornerRadius(20).shadow(radius: 5))
-                
             }
         }
         .onAppear {
