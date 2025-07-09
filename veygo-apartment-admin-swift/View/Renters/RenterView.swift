@@ -42,13 +42,11 @@ public struct RenterView: View {
                     Text(renter.studentEmail)
                         .font(.subheadline)
                         .foregroundColor(Color("TextBlackSecondary"))
-                        .padding(.leading, 4)
                     Text(renter.phone)
                         .font(.subheadline)
                         .foregroundColor(Color("TextBlackSecondary"))
-                        .padding(.leading, 4)
                 }
-                .padding(.leading, 12)
+                .padding(12)
             }
             .searchable(text: $searchText, prompt: "Search renters")
             .toolbar {
