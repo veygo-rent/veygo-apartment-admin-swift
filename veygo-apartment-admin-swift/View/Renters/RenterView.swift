@@ -65,21 +65,6 @@ public struct RenterView: View {
             ZStack {
                 Color("MainBG").ignoresSafeArea()
                 if let renterID = seletedRenter, let renter = renters.getRenterDetail(for: renterID) {
-//                    VStack (spacing: 0) {
-//                        Spacer()
-//                        ScrollView {
-//                            RenterCardView(doNotRentRecords: $doNotRentRecords, renter: renter)
-//                                .padding(.top, UIScreen.main.bounds.height / 6)
-//                        }
-//                        Spacer()
-//                    }
-//                    .padding(.horizontal, 36)
-//                    .background(Color("TextFieldBg").cornerRadius(16))
-//                    .overlay(
-//                        RoundedRectangle(cornerRadius: 16)
-//                            .stroke(Color("TextFieldFrame"), lineWidth: 1)
-//                    )
-//                    .padding(.horizontal, 26)
                     RenterCardViewNew(doNotRentRecords: $doNotRentRecords, renter: renter)
                 }
             }
@@ -138,29 +123,29 @@ enum RenterAttributes: String, Equatable {
     case dob = "Date of Birth"
 }
 
-struct RenterCardView: View {
+struct RenterCardViewNew: View {
     @Binding var doNotRentRecords: [DoNotRentList]
     
     let renter: PublishRenter
     var body: some View {
-        VStack (alignment: .leading) {
+        List {
             Text("\(renter.name)")
                 .foregroundColor(Color("TextBlackPrimary"))
                 .font(.largeTitle)
-                .padding(.bottom, 20)
+                .listRowBackground(Color("TextFieldBg"))
             RenterAttributeView(renter: renter, attribute: .dob)
-            Divider()
+                .listRowBackground(Color("TextFieldBg"))
             RenterAttributeView(renter: renter, attribute: .email)
-            Divider()
+                .listRowBackground(Color("TextFieldBg"))
             RenterAttributeView(renter: renter, attribute: .phone)
+                .listRowBackground(Color("TextFieldBg"))
             if doNotRentRecords.count > 0 {
-                Divider()
                 Text("Do Not Rent Record(s):")
                     .fontWeight(.semibold)
                     .foregroundColor(Color("TextBlackPrimary"))
+                    .listRowBackground(Color("TextFieldBg"))
                 ForEach(doNotRentRecords) { record in
                     if record.isValid() {
-                        Divider()
                         HStack {
                             Text("\(record.note)")
                                 .foregroundColor(Color("TextBlackSecondary"))
@@ -172,9 +157,12 @@ struct RenterCardView: View {
                                 // Do something
                             }
                         }
+                        .listRowBackground(Color("TextFieldBg"))
                         
                     }
                 }
+            }
+            VStack {
                 HStack (spacing: 20) {
                     SecondaryButton(text: "Verify DLN") {
                         // do something
@@ -183,7 +171,6 @@ struct RenterCardView: View {
                         // do something
                     }
                 }
-                .padding(.top, 12)
                 HStack (spacing: 20) {
                     SecondaryButton(text: "Verify Lease") {
                         // do something
@@ -192,24 +179,8 @@ struct RenterCardView: View {
                         // do something
                     }
                 }
-                .padding(.top, 12)
             }
-        }
-    }
-}
-
-struct RenterCardViewNew: View {
-    @Binding var doNotRentRecords: [DoNotRentList]
-    
-    let renter: PublishRenter
-    var body: some View {
-        List {
-            Text("Hello, World!")
-                .listRowBackground(Color("TextFieldBg"))
-            Text("Hello, World!")
-                .listRowBackground(Color("TextFieldBg"))
-            Text("Hello, World!")
-                .listRowBackground(Color("TextFieldBg"))
+            .listRowBackground(Color("TextFieldBg"))
         }
         .scrollContentBackground(.hidden)
     }
