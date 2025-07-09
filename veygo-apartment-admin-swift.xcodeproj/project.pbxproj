@@ -25,6 +25,16 @@
 		8EF345102E1B6858001900A0 /* veygo-apartment-admin-swift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "veygo-apartment-admin-swift.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8EC5D3E92E1DFADB00D228A1 /* Exceptions for "veygo-apartment-admin-swift" folder in "veygo-apartment-admin-swift" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8EF3450F2E1B6858001900A0 /* veygo-apartment-admin-swift */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8E3162272E1B6D6D00FF1384 /* veygo-apartment-admin-swift-tests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -33,6 +43,9 @@
 		};
 		8EF345122E1B6858001900A0 /* veygo-apartment-admin-swift */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8EC5D3E92E1DFADB00D228A1 /* Exceptions for "veygo-apartment-admin-swift" folder in "veygo-apartment-admin-swift" target */,
+			);
 			path = "veygo-apartment-admin-swift";
 			sourceTree = "<group>";
 		};
@@ -393,7 +406,9 @@
 				DEVELOPMENT_TEAM = F84843HABV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "veygo-apartment-admin-swift/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Veygo Admin";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -432,7 +447,9 @@
 				DEVELOPMENT_TEAM = F84843HABV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "veygo-apartment-admin-swift/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Veygo Admin";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
