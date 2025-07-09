@@ -20,7 +20,6 @@ struct ShortTextLink: View {
                 .foregroundColor(Color("TextLink"))
                 .underline()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

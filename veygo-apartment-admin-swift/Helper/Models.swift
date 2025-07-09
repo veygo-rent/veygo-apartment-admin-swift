@@ -84,8 +84,17 @@ struct PublishRenter: Identifiable, Equatable, Codable {
     var subscriptionPaymentMethodId: Int?
 }
 
+struct DoNotRentList: Identifiable, Equatable, Codable {
+    var id: Int
+    var name: String?
+    var email: String?
+    var phone: String?
+    var note: String
+    var exp: String?
+}
 
-struct Apartment: Codable, Identifiable {
+
+struct Apartment: Identifiable, Equatable, Codable {
     var id: Int
     var name: String
     var email: String

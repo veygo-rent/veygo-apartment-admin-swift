@@ -19,6 +19,8 @@ public struct RenterView: View {
     @State private var renters: [PublishRenter] = []
     @State private var searchText: String = ""
     
+    @State private var doNotRentRecords: [DoNotRentList] = [DoNotRentList(id: 1, note: "Renter doing illegal activities with our vehicle. "), DoNotRentList(id: 2, note: "Renter intentionally running into a police vehicle. ")]
+    
     // Computed list that respects the search query (searches name, email, and phone)
     private var filteredRenters: [PublishRenter] {
         if searchText.isEmpty { return renters }
@@ -63,32 +65,15 @@ public struct RenterView: View {
             ZStack {
                 Color("MainBG").ignoresSafeArea()
                 if let renterID = seletedRenter, let renter = renters.getRenterDetail(for: renterID) {
-                    VStack (alignment: .leading, spacing: 20) {
-                        Text("\(renter.name)")
-                            .foregroundColor(Color("TextBlackPrimary"))
-                            .font(.largeTitle)
-                        RenterAttributeView(renter: renter, attribute: .dob)
-                        RenterAttributeView(renter: renter, attribute: .email)
-                        RenterAttributeView(renter: renter, attribute: .phone)
-                        HStack (spacing: 20) {
-                            SecondaryButton(text: "Verify DLN") {
-                                // do something
-                            }
-                            SecondaryButton(text: "Verify Insurance") {
-                                // do something
-                            }
+                    VStack (spacing: 0) {
+                        Spacer()
+                        ScrollView {
+                            RenterCardView(doNotRentRecords: $doNotRentRecords, renter: renter)
+                                .padding(.top, UIScreen.main.bounds.height / 6)
                         }
-                        HStack (spacing: 20) {
-                            SecondaryButton(text: "Verify Lease") {
-                                // do something
-                            }
-                            DangerButton(text: "Add to DNR") {
-                                // do something
-                            }
-                        }
+                        Spacer()
                     }
                     .padding(.horizontal, 36)
-                    .padding(.vertical, 48)
                     .background(Color("TextFieldBg").cornerRadius(16))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
@@ -152,6 +137,65 @@ enum RenterAttributes: String, Equatable {
     case dob = "Date of Birth"
 }
 
+struct RenterCardView: View {
+    @Binding var doNotRentRecords: [DoNotRentList]
+    
+    let renter: PublishRenter
+    var body: some View {
+        VStack (alignment: .leading) {
+            Text("\(renter.name)")
+                .foregroundColor(Color("TextBlackPrimary"))
+                .font(.largeTitle)
+                .padding(.bottom, 20)
+            RenterAttributeView(renter: renter, attribute: .dob)
+            Divider()
+            RenterAttributeView(renter: renter, attribute: .email)
+            Divider()
+            RenterAttributeView(renter: renter, attribute: .phone)
+            if doNotRentRecords.count > 0 {
+                Divider()
+                Text("Do Not Rent Record(s):")
+                    .fontWeight(.semibold)
+                    .foregroundColor(Color("TextBlackPrimary"))
+                ForEach(doNotRentRecords) { record in
+                    if record.isValid() {
+                        Divider()
+                        HStack {
+                            Text("\(record.note)")
+                                .foregroundColor(Color("TextBlackSecondary"))
+                            Spacer()
+                            ShortTextLink(text: "View Details") {
+                                // Do something
+                            }
+                            ShortTextLink(text: "Delete") {
+                                // Do something
+                            }
+                        }
+                    }
+                }
+            }
+            HStack (spacing: 20) {
+                SecondaryButton(text: "Verify DLN") {
+                    // do something
+                }
+                SecondaryButton(text: "Verify Insurance") {
+                    // do something
+                }
+            }
+            .padding(.top, 12)
+            HStack (spacing: 20) {
+                SecondaryButton(text: "Verify Lease") {
+                    // do something
+                }
+                DangerButton(text: "Add to DNR") {
+                    // do something
+                }
+            }
+            .padding(.top, 12)
+        }
+    }
+}
+
 struct RenterAttributeView: View {
     let renter: PublishRenter
     let attribute: RenterAttributes
@@ -167,6 +211,7 @@ struct RenterAttributeView: View {
     var body: some View {
         HStack (spacing: 0) {
             Text("\(attribute.rawValue): ")
+                .fontWeight(.semibold)
                 .foregroundColor(Color("TextBlackPrimary"))
             switch attribute {
             case .email:
@@ -207,11 +252,5 @@ struct RenterAttributeView: View {
                 }
             }
         }.font(.title3)
-    }
-}
-
-struct RenterCardView: View {
-    var body: some View {
-        Text("RenterCardView")
     }
 }
