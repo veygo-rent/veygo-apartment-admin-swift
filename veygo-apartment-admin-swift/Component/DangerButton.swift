@@ -18,14 +18,14 @@ struct DangerButton: View {
         }) {
             Text(text)
                 .font(.system(size: 17, weight: .semibold, design: .default)) // SF Pro 字体
-                .foregroundColor(Color("InvalidRed")) // 使用自定义颜色
+                .foregroundColor(Color("DangerButtonText")) // 使用自定义颜色
                 .frame(maxWidth: .infinity)
                 .frame(height: 45)
                 .background(Color("SecondaryButtonBg"))
                 .cornerRadius(16)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color("InvalidRed"), lineWidth: 1) // 黑色细边框
+                        .stroke(Color("DangerButtonOutline"), lineWidth: 1) // 黑色细边框
                 )
         }
     }
@@ -33,6 +33,6 @@ struct DangerButton: View {
 
 #Preview {
     DangerButton(text: "Delete Renter") {
-        print("Log In Button Pressed")
+        print("Delete Button Pressed")
     }
 }
