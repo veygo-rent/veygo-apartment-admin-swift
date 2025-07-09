@@ -17,15 +17,37 @@ public struct RenterView: View {
     @AppStorage("user_id") var userId: Int = 0
     
     @State private var renters: [PublishRenter] = []
+    @State private var searchText: String = ""
+    
+    // Computed list that respects the search query (searches name, email, and phone)
+    private var filteredRenters: [PublishRenter] {
+        if searchText.isEmpty { return renters }
+        return renters.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText) ||
+            $0.studentEmail.localizedCaseInsensitiveContains(searchText) ||
+            $0.phone.localizedCaseInsensitiveContains(searchText)
+        }
+    }
     
     @State private var seletedRenter: PublishRenter.ID? = nil
     
     public var body: some View {
         
         NavigationSplitView {
-            List(renters, selection: $seletedRenter) { renter in
-                Text(renter.name)
+            List(filteredRenters, selection: $seletedRenter) { renter in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(renter.name)
+                        .font(.headline)
+                        .foregroundColor(Color("TextBlackPrimary"))
+                    Text(renter.studentEmail)
+                        .font(.subheadline)
+                        .foregroundColor(Color("TextBlackSecondary"))
+                    Text(renter.phone)
+                        .font(.subheadline)
+                        .foregroundColor(Color("TextBlackSecondary"))
+                }
             }
+            .searchable(text: $searchText, prompt: "Search renters")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -47,6 +69,22 @@ public struct RenterView: View {
                         RenterAttributeView(renter: renter, attribute: .dob)
                         RenterAttributeView(renter: renter, attribute: .email)
                         RenterAttributeView(renter: renter, attribute: .phone)
+                        HStack (spacing: 20) {
+                            SecondaryButton(text: "Verify DLN") {
+                                // do something
+                            }
+                            SecondaryButton(text: "Verify Insurance") {
+                                // do something
+                            }
+                        }
+                        HStack (spacing: 20) {
+                            SecondaryButton(text: "Verify Lease") {
+                                // do something
+                            }
+                            DangerButton(text: "Add to DNR") {
+                                // do something
+                            }
+                        }
                     }
                     .padding(.horizontal, 36)
                     .padding(.vertical, 48)
@@ -105,76 +143,76 @@ public struct RenterView: View {
             }
         }.resume()
     }
-    
-    enum RenterAttributes: String, Equatable {
-        case email = "Email"
-        case phone = "Phone"
-        case dob = "Date of Birth"
-    }
-    
-    struct RenterAttributeView: View {
-        let renter: PublishRenter
-        let attribute: RenterAttributes
-        // Formatter to parse "YYYY-MM-DD" dates in UTC
-        private static let utcFormatter: DateFormatter = {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            formatter.timeZone = TimeZone(secondsFromGMT: 0)
-            return formatter
-        }()
-        // Formatter to display dates like "Sep 26, 2001"
-        private static let displayFormatter: DateFormatter = {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d, yyyy"
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            // Keep the date in UTC so the printed day matches the stored string
-            formatter.timeZone = TimeZone(secondsFromGMT: 0)
-            return formatter
-        }()
-        var body: some View {
-            HStack (spacing: 0) {
-                Text("\(attribute.rawValue): ")
-                    .foregroundColor(Color("TextBlackPrimary"))
-                switch attribute {
-                case .email:
-                    Text("\(renter.studentEmail)")
-                        .foregroundColor(Color("TextBlackSecondary"))
-                    Spacer()
-                    if let expirationString = renter.studentEmailExpiration,
-                       let expirationDate = Self.utcFormatter.date(from: expirationString) {
-                        if expirationDate >= Date() {
-                            Text("Expires at \(expirationString)")
-                                .foregroundColor(Color("ValidGreen"))
-                        } else {
-                            Text("Expired")
-                                .foregroundColor(Color("InvalidRed"))
-                        }
-                    } else {
-                        Text("Not Verified")
-                            .foregroundColor(Color("InvalidRed"))
-                    }
-                case .phone:
-                    Text("\(renter.phone)")
-                        .foregroundColor(Color("TextBlackSecondary"))
-                    Spacer()
-                    if renter.phoneIsVerified {
-                        Text("Verified")
+}
+
+enum RenterAttributes: String, Equatable {
+    case email = "Email"
+    case phone = "Phone"
+    case dob = "Date of Birth"
+}
+
+struct RenterAttributeView: View {
+    let renter: PublishRenter
+    let attribute: RenterAttributes
+    // Formatter to parse "YYYY-MM-DD" dates in UTC
+    private static let utcFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
+    // Formatter to display dates like "Sep 26, 2001"
+    private static let displayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        // Keep the date in UTC so the printed day matches the stored string
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
+    var body: some View {
+        HStack (spacing: 0) {
+            Text("\(attribute.rawValue): ")
+                .foregroundColor(Color("TextBlackPrimary"))
+            switch attribute {
+            case .email:
+                Text("\(renter.studentEmail)")
+                    .foregroundColor(Color("TextBlackSecondary"))
+                Spacer()
+                if let expirationString = renter.studentEmailExpiration,
+                   let expirationDate = Self.utcFormatter.date(from: expirationString) {
+                    if expirationDate >= Date() {
+                        Text("Expires at \(expirationString)")
                             .foregroundColor(Color("ValidGreen"))
                     } else {
-                        Text("Not Verified")
+                        Text("Expired")
                             .foregroundColor(Color("InvalidRed"))
                     }
-                case .dob:
-                    if let dobDate = Self.utcFormatter.date(from: renter.dateOfBirth) {
-                        Text(Self.displayFormatter.string(from: dobDate))
-                            .foregroundColor(Color("TextBlackSecondary"))
-                    } else {
-                        Text(renter.dateOfBirth)        // Fallback to raw string if parsing fails
-                            .foregroundColor(Color("TextBlackSecondary"))
-                    }
+                } else {
+                    Text("Not Verified")
+                        .foregroundColor(Color("InvalidRed"))
                 }
-            }.font(.title3)
-        }
+            case .phone:
+                Text("\(renter.phone)")
+                    .foregroundColor(Color("TextBlackSecondary"))
+                Spacer()
+                if renter.phoneIsVerified {
+                    Text("Verified")
+                        .foregroundColor(Color("ValidGreen"))
+                } else {
+                    Text("Not Verified")
+                        .foregroundColor(Color("InvalidRed"))
+                }
+            case .dob:
+                if let dobDate = Self.utcFormatter.date(from: renter.dateOfBirth) {
+                    Text(Self.displayFormatter.string(from: dobDate))
+                        .foregroundColor(Color("TextBlackSecondary"))
+                } else {
+                    Text(renter.dateOfBirth)        // Fallback to raw string if parsing fails
+                        .foregroundColor(Color("TextBlackSecondary"))
+                }
+            }
+        }.font(.title3)
     }
 }
 

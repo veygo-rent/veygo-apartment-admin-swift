@@ -32,7 +32,7 @@ struct TextSizeReferanceView: View {
                 Text("Caption").font(.caption)
                 Text("Caption2").font(.caption2) // available iOS 14
             }
-        }
+        }.padding()
     }
 }
 

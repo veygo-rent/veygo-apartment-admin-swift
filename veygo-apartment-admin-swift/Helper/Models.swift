@@ -68,11 +68,11 @@ struct PublishRenter: Identifiable, Equatable, Codable {
     var dateOfRegistration: Date
     var driversLicenseNumber: String?
     var driversLicenseStateRegion: String?
-    var driversLicenseExpiration: Date?
-    var insuranceLiabilityExpiration: Date?
-    var insuranceCollisionExpiration: Date?
+    var driversLicenseExpiration: String? // Admin needs to verify
+    var insuranceLiabilityExpiration: String? // Admin needs to verify
+    var insuranceCollisionExpiration: String? // Admin needs to verify
     var apartmentId: Int
-    var leaseAgreementExpiration: Date?
+    var leaseAgreementExpiration: String? // Admin needs to verify
     var billingAddress: String?
     var signatureDatetime: Date?
     var planTier: PlanTier
