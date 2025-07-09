@@ -35,17 +35,20 @@ public struct RenterView: View {
         
         NavigationSplitView {
             List(filteredRenters, selection: $seletedRenter) { renter in
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(renter.name)
                         .font(.headline)
                         .foregroundColor(Color("TextBlackPrimary"))
                     Text(renter.studentEmail)
                         .font(.subheadline)
                         .foregroundColor(Color("TextBlackSecondary"))
+                        .padding(.leading, 4)
                     Text(renter.phone)
                         .font(.subheadline)
                         .foregroundColor(Color("TextBlackSecondary"))
+                        .padding(.leading, 4)
                 }
+                .padding(.leading, 12)
             }
             .searchable(text: $searchText, prompt: "Search renters")
             .toolbar {
