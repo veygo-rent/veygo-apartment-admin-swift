@@ -65,21 +65,22 @@ public struct RenterView: View {
             ZStack {
                 Color("MainBG").ignoresSafeArea()
                 if let renterID = seletedRenter, let renter = renters.getRenterDetail(for: renterID) {
-                    VStack (spacing: 0) {
-                        Spacer()
-                        ScrollView {
-                            RenterCardView(doNotRentRecords: $doNotRentRecords, renter: renter)
-                                .padding(.top, UIScreen.main.bounds.height / 6)
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal, 36)
-                    .background(Color("TextFieldBg").cornerRadius(16))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color("TextFieldFrame"), lineWidth: 1)
-                    )
-                    .padding(.horizontal, 26)
+//                    VStack (spacing: 0) {
+//                        Spacer()
+//                        ScrollView {
+//                            RenterCardView(doNotRentRecords: $doNotRentRecords, renter: renter)
+//                                .padding(.top, UIScreen.main.bounds.height / 6)
+//                        }
+//                        Spacer()
+//                    }
+//                    .padding(.horizontal, 36)
+//                    .background(Color("TextFieldBg").cornerRadius(16))
+//                    .overlay(
+//                        RoundedRectangle(cornerRadius: 16)
+//                            .stroke(Color("TextFieldFrame"), lineWidth: 1)
+//                    )
+//                    .padding(.horizontal, 26)
+                    RenterCardViewNew(doNotRentRecords: $doNotRentRecords, renter: renter)
                 }
             }
         }
@@ -171,28 +172,46 @@ struct RenterCardView: View {
                                 // Do something
                             }
                         }
+                        
                     }
                 }
+                HStack (spacing: 20) {
+                    SecondaryButton(text: "Verify DLN") {
+                        // do something
+                    }
+                    SecondaryButton(text: "Verify Insurance") {
+                        // do something
+                    }
+                }
+                .padding(.top, 12)
+                HStack (spacing: 20) {
+                    SecondaryButton(text: "Verify Lease") {
+                        // do something
+                    }
+                    DangerButton(text: "Add to DNR") {
+                        // do something
+                    }
+                }
+                .padding(.top, 12)
             }
-            HStack (spacing: 20) {
-                SecondaryButton(text: "Verify DLN") {
-                    // do something
-                }
-                SecondaryButton(text: "Verify Insurance") {
-                    // do something
-                }
-            }
-            .padding(.top, 12)
-            HStack (spacing: 20) {
-                SecondaryButton(text: "Verify Lease") {
-                    // do something
-                }
-                DangerButton(text: "Add to DNR") {
-                    // do something
-                }
-            }
-            .padding(.top, 12)
         }
+    }
+}
+
+struct RenterCardViewNew: View {
+    @Binding var doNotRentRecords: [DoNotRentList]
+    
+    let renter: PublishRenter
+    var body: some View {
+        List {
+            Text("Hello, World!")
+                .listRowBackground(Color("TextFieldBg"))
+            Text("Hello, World!")
+                .listRowBackground(Color("TextFieldBg"))
+            Text("Hello, World!")
+                .listRowBackground(Color("TextFieldBg"))
+        }
+        .scrollContentBackground(.hidden)
     }
 }
 

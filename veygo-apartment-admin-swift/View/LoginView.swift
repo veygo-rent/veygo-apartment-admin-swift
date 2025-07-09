@@ -70,7 +70,9 @@ struct LoginView: View {
                 Spacer().frame(height: 20)
                 ShortTextLink(text: "Forgot Password?") {
                     goToResetView = true
-                }.padding(.leading, 10)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 10)
 
                 Spacer()
             }

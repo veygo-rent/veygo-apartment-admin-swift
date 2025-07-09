@@ -28,3 +28,19 @@ extension DoNotRentList {
         }
     }
 }
+
+extension PublishRenter {
+    func emailIsValid() -> Bool {
+        if let expUnwrapped = self.studentEmailExpiration {
+            let expDate = dateFromYYYYMMDD(expUnwrapped)!
+            let now = Date()
+            if expDate < now {
+                return false
+            } else {
+                return true
+            }
+        } else {
+            return false
+        }
+    }
+}

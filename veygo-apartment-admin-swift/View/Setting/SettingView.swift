@@ -22,20 +22,24 @@ public struct SettingView: View {
                 Section() {
                     NavigationLink("About", value: Destination.about)
                 }
+                .listRowBackground(Color("TextFieldBg"))
                 
                 Section() {
                     NavigationLink("Account", value: Destination.account)
                 }
+                .listRowBackground(Color("TextFieldBg"))
                 
                 Section() {
                     NavigationLink("Phone", value: Destination.phone)
                     NavigationLink("Email", value: Destination.email)
                 }
+                .listRowBackground(Color("TextFieldBg"))
                 
                 Section() {
                     NavigationLink("Legal Notice", value: Destination.legalNotice)
                     NavigationLink("License", value: Destination.license)
                 }
+                .listRowBackground(Color("TextFieldBg"))
                 
                 // Stand‑alone “Log Out” action
                 Button(role: .destructive) {
@@ -60,6 +64,7 @@ public struct SettingView: View {
                     Text("Log Out")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .listRowBackground(Color("TextFieldBg"))
             }
             .navigationDestination(for: Destination.self) { dest in
                 switch dest {
@@ -74,6 +79,7 @@ public struct SettingView: View {
             .navigationTitle("Settings")
         }
         .scrollContentBackground(.hidden)
+        .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
     }
 }
 

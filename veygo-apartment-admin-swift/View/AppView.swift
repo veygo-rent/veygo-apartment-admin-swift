@@ -21,6 +21,7 @@ struct AppView: View {
             Text("Bad Credentials")
         } else {
             TabView (selection: $selected) {
+                if session.user!.emailIsValid() {
                 TabSection("Summary") {
                     Tab("Overview", systemImage: "chart.pie", value: RootDestination.overview) {
                         ZStack {
@@ -40,7 +41,7 @@ struct AppView: View {
                             Text("Toll Companies")
                         }
                         
-                        Tab("RootDestination", systemImage: "building.2", value: RootDestination.apartments) {
+                        Tab("Apartments", systemImage: "building.2", value: RootDestination.apartments) {
                             ApartmentView()
                         }
                         
@@ -62,6 +63,7 @@ struct AppView: View {
                         VehicleView()
                     }
                 }
+            }
                 
                 TabSection("Settings") {
                     Tab("Setting", systemImage: "gearshape", value: RootDestination.setting) {
