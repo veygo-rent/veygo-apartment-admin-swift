@@ -75,12 +75,12 @@ struct LoginView: View {
                 Spacer()
             }
             .padding(.horizontal, 400)
-            .background(Color("MainBG").ignoresSafeArea())
             .navigationDestination(isPresented: $goToResetView) {
                 Text("TODO: Reset Password")
             }
             LegalText()
         }
+        .background(Color("MainBG").ignoresSafeArea(.all))
     }
 
     func loginUser() {

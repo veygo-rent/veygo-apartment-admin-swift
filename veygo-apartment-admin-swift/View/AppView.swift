@@ -7,14 +7,14 @@
 
 import SwiftUI
 
-enum Destination: String, Identifiable, Hashable {
+private enum RootDestination: String, Identifiable, Hashable {
     case overview, apartments, vehicles, renters, setting, taxes, toll_companies, reports
     var id: String { self.rawValue }
 }
 
 struct AppView: View {
     @EnvironmentObject var session: AdminSession
-    @State private var selected: Destination = .overview
+    @State private var selected: RootDestination = .overview
     
     var body: some View {
         if session.user == nil {
@@ -22,7 +22,7 @@ struct AppView: View {
         } else {
             TabView (selection: $selected) {
                 TabSection("Summary") {
-                    Tab("Overview", systemImage: "chart.pie", value: Destination.overview) {
+                    Tab("Overview", systemImage: "chart.pie", value: RootDestination.overview) {
                         ZStack {
                             Color("MainBG").ignoresSafeArea()
                             OverviewView()
@@ -32,45 +32,45 @@ struct AppView: View {
                 
                 if session.user!.employeeTier == .admin {
                     TabSection("Administration") {
-                        Tab("Taxes", systemImage: "percent", value: Destination.taxes) {
+                        Tab("Taxes", systemImage: "percent", value: RootDestination.taxes) {
                             Text("Taxes")
                         }
                         
-                        Tab("Toll Companies", systemImage: "car.front.waves.down", value: Destination.toll_companies) {
+                        Tab("Toll Companies", systemImage: "car.front.waves.down", value: RootDestination.toll_companies) {
                             Text("Toll Companies")
                         }
                         
-                        Tab("Apartments", systemImage: "building.2", value: Destination.apartments) {
+                        Tab("RootDestination", systemImage: "building.2", value: RootDestination.apartments) {
                             ApartmentView()
                         }
                         
-                        Tab("Reports", systemImage: "chart.line.text.clipboard", value: Destination.reports) {
+                        Tab("Reports", systemImage: "chart.line.text.clipboard", value: RootDestination.reports) {
                             Text("Reports")
                         }
                     }
                 }
                 
-                TabSection("Vehicles") {
-                    Tab("Vehicles", systemImage: "car.rear", value: Destination.vehicles) {
-                        VehicleView()
-                    }
-                }
-                
-                TabSection("Trips") {
-                    Tab("Renters", systemImage: "person", value: Destination.renters) {
+                TabSection("Rentals") {
+                    Tab("Renters", systemImage: "person", value: RootDestination.renters) {
                         ZStack {
                             Color("MainBG").ignoresSafeArea()
                             RenterView()
                         }
                     }
-                }
-                
-                TabSection("Management") {
-                    Tab("Setting", systemImage: "gearshape", value: Destination.setting) {
-                        SettingView()
+                    
+                    Tab("Vehicles", systemImage: "car.rear", value: RootDestination.vehicles) {
+                        VehicleView()
                     }
                 }
-
+                
+                TabSection("Settings") {
+                    Tab("Setting", systemImage: "gearshape", value: RootDestination.setting) {
+                        ZStack {
+                            Color("MainBG").ignoresSafeArea()
+                            SettingView()
+                        }
+                    }
+                }
             }
             .tabViewStyle(.sidebarAdaptable)
         }

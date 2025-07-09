@@ -155,13 +155,6 @@ enum RenterAttributes: String, Equatable {
 struct RenterAttributeView: View {
     let renter: PublishRenter
     let attribute: RenterAttributes
-    // Formatter to parse "YYYY-MM-DD" dates in UTC
-    private static let utcFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter
-    }()
     // Formatter to display dates like "Sep 26, 2001"
     private static let displayFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -181,7 +174,7 @@ struct RenterAttributeView: View {
                     .foregroundColor(Color("TextBlackSecondary"))
                 Spacer()
                 if let expirationString = renter.studentEmailExpiration,
-                   let expirationDate = Self.utcFormatter.date(from: expirationString) {
+                   let expirationDate = dateFromYYYYMMDD(expirationString) {
                     if expirationDate >= Date() {
                         Text("Expires at \(expirationString)")
                             .foregroundColor(Color("ValidGreen"))
@@ -205,7 +198,7 @@ struct RenterAttributeView: View {
                         .foregroundColor(Color("InvalidRed"))
                 }
             case .dob:
-                if let dobDate = Self.utcFormatter.date(from: renter.dateOfBirth) {
+                if let dobDate = dateFromYYYYMMDD(renter.dateOfBirth) {
                     Text(Self.displayFormatter.string(from: dobDate))
                         .foregroundColor(Color("TextBlackSecondary"))
                 } else {
