@@ -121,6 +121,13 @@ struct Apartment: Identifiable, Equatable, Codable {
     var uniId: Int
 }
 
+struct Tax: Identifiable, Equatable, Codable {
+    var id: Int
+    var name: String
+    var multiplier: Double
+    var isEffective: Bool
+}
+
 class AdminSession: ObservableObject {
     @Published var user: PublishRenter? = nil
     

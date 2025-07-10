@@ -31,7 +31,7 @@ struct AppView: View {
                     if session.user!.employeeTier == .admin {
                         TabSection("Administration") {
                             Tab("Taxes", systemImage: "percent", value: RootDestination.taxes) {
-                                Text("Taxes")
+                                TaxView()
                             }
                             
                             Tab("Toll Companies", systemImage: "car.front.waves.down", value: RootDestination.toll_companies) {

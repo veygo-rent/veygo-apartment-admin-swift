@@ -64,7 +64,7 @@ public struct RenterView: View {
         } detail: {
             ZStack {
                 Color("MainBG").ignoresSafeArea()
-                if let renterID = seletedRenter, let renter = renters.getRenterDetail(for: renterID) {
+                if let renterID = seletedRenter, let renter = renters.getItemBy(id: renterID) {
                     RenterCardViewNew(doNotRentRecords: $doNotRentRecords, renter: renter)
                 }
             }
@@ -96,12 +96,13 @@ public struct RenterView: View {
             }
             
             if httpResponse.statusCode == 200 {
+                // Update AppStorage
+                self.token = extractToken(from: response)!
+                
                 let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 if let renterData = responseJSON?["renters"],
                    let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
                    let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
-                    // Update AppStorage
-                    self.token = extractToken(from: response)!
                     renters = decodedUser
                 }
             } else if httpResponse.statusCode == 401 {
@@ -166,17 +167,21 @@ struct RenterCardViewNew: View {
                     }
                 }
             }
-            VStack {
-                HStack (spacing: 20) {
+            VStack (spacing: 0) {
+                HStack (spacing: 16) {
                     SecondaryButton(text: "Verify DLN") {
                         // do something
                     }
                     SecondaryButton(text: "Verify Insurance") {
                         // do something
                     }
-                }
-                HStack (spacing: 20) {
                     SecondaryButton(text: "Verify Lease") {
+                        // do something
+                    }
+                }
+                .padding(.bottom, 16)
+                HStack (spacing: 16) {
+                    DangerButton(text: "Edit Privilages") {
                         // do something
                     }
                     DangerButton(text: "Add to DNR") {

@@ -13,6 +13,12 @@ extension Array where Element == PublishRenter {
     }
 }
 
+extension Array where Element: Identifiable, Element.ID == Int {
+    func getItemBy(id: Int) -> Element? {
+        return self.first { $0.id == id }
+    }
+}
+
 extension DoNotRentList {
     func isValid() -> Bool {
         if let expUnwrapped = self.exp {
