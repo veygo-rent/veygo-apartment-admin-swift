@@ -22,59 +22,51 @@ struct AppView: View {
         } else {
             TabView (selection: $selected) {
                 if session.user!.emailIsValid() {
-                TabSection("Summary") {
-                    Tab("Overview", systemImage: "chart.pie", value: RootDestination.overview) {
-                        ZStack {
-                            Color("MainBG").ignoresSafeArea()
+                    TabSection("Summary") {
+                        Tab("Overview", systemImage: "chart.pie", value: RootDestination.overview) {
                             OverviewView()
                         }
                     }
-                }
-                
-                if session.user!.employeeTier == .admin {
-                    TabSection("Administration") {
-                        Tab("Taxes", systemImage: "percent", value: RootDestination.taxes) {
-                            Text("Taxes")
-                        }
-                        
-                        Tab("Toll Companies", systemImage: "car.front.waves.down", value: RootDestination.toll_companies) {
-                            Text("Toll Companies")
-                        }
-                        
-                        Tab("Apartments", systemImage: "building.2", value: RootDestination.apartments) {
-                            ApartmentView()
-                        }
-                        
-                        Tab("Reports", systemImage: "chart.line.text.clipboard", value: RootDestination.reports) {
-                            Text("Reports")
-                        }
-                    }
-                }
-                
-                TabSection("Rentals") {
-                    Tab("Renters", systemImage: "person", value: RootDestination.renters) {
-                        ZStack {
-                            Color("MainBG").ignoresSafeArea()
-                            RenterView()
+                    
+                    if session.user!.employeeTier == .admin {
+                        TabSection("Administration") {
+                            Tab("Taxes", systemImage: "percent", value: RootDestination.taxes) {
+                                Text("Taxes")
+                            }
+                            
+                            Tab("Toll Companies", systemImage: "car.front.waves.down", value: RootDestination.toll_companies) {
+                                Text("Toll Companies")
+                            }
+                            
+                            Tab("Apartments", systemImage: "building.2", value: RootDestination.apartments) {
+                                ApartmentView()
+                            }
+                            
+                            Tab("Reports", systemImage: "chart.line.text.clipboard", value: RootDestination.reports) {
+                                Text("Reports")
+                            }
                         }
                     }
                     
-                    Tab("Vehicles", systemImage: "car.rear", value: RootDestination.vehicles) {
-                        VehicleView()
+                    TabSection("Rentals") {
+                        Tab("Renters", systemImage: "person", value: RootDestination.renters) {
+                            RenterView()
+                        }
+                        
+                        Tab("Vehicles", systemImage: "car.rear", value: RootDestination.vehicles) {
+                            VehicleView()
+                        }
                     }
                 }
-            }
                 
                 TabSection("Settings") {
                     Tab("Setting", systemImage: "gearshape", value: RootDestination.setting) {
-                        ZStack {
-                            Color("MainBG").ignoresSafeArea()
-                            SettingView()
-                        }
+                        SettingView()
                     }
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
+            .scrollContentBackground(.hidden)
         }
     }
 }

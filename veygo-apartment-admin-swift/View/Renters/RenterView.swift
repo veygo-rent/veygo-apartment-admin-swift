@@ -72,6 +72,8 @@ public struct RenterView: View {
         .onAppear {
             refreshRenters()
         }
+        .scrollContentBackground(.hidden)
+        .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
     }
     
     func refreshRenters() {
@@ -132,6 +134,8 @@ struct RenterCardViewNew: View {
             Text("\(renter.name)")
                 .foregroundColor(Color("TextBlackPrimary"))
                 .font(.largeTitle)
+                .fontWeight(.thin)
+                .padding(.vertical, 10)
                 .listRowBackground(Color("TextFieldBg"))
             RenterAttributeView(renter: renter, attribute: .dob)
                 .listRowBackground(Color("TextFieldBg"))
