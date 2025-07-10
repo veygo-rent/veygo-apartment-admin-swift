@@ -12,6 +12,8 @@ struct TextInputField: View {
     @Binding var text: String
     var isSecure: Bool = false
     
+    var endingString: String? = nil
+    
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 14)
@@ -26,11 +28,24 @@ struct TextInputField: View {
                     .padding(.leading, 16)
                     .kerning(2)
             } else {
-                TextField(placeholder, text: $text)
-                    .frame(height: 42)
-                    .foregroundColor(Color("TextFieldWordColor"))
-                    .padding(.leading, 16)
-                    .kerning(1.5)
+                if let endingString = endingString {
+                    HStack {
+                        TextField(placeholder, text: $text)
+                            .frame(height: 42)
+                            .foregroundColor(Color("TextFieldWordColor"))
+                            .padding(.leading, 16)
+                            .kerning(1.5)
+                        Text(endingString)
+                            .foregroundColor(Color("TextFieldWordColor"))
+                            .padding(.trailing, 16)
+                    }
+                } else {
+                    TextField(placeholder, text: $text)
+                        .frame(height: 42)
+                        .foregroundColor(Color("TextFieldWordColor"))
+                        .padding(.leading, 16)
+                        .kerning(1.5)
+                }
             }
         }
     }
