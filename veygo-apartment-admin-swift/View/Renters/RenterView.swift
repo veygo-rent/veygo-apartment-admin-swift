@@ -107,7 +107,7 @@ public struct RenterView: View {
                 }
             } else if httpResponse.statusCode == 401 {
                 DispatchQueue.main.async {
-                    alertMessage = "Email or password is incorrect"
+                    alertMessage = "Reverify login status failed"
                     showAlert = true
                 }
             } else {
