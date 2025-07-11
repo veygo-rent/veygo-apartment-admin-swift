@@ -26,7 +26,8 @@ public struct ApartmentView: View {
     private var filteredApartments: [Apartment] {
         if searchText.isEmpty { return apartments }
         return apartments.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText)
+            $0.name.localizedCaseInsensitiveContains(searchText) ||
+            $0.address.localizedCaseInsensitiveContains(searchText)
         }
     }
     
@@ -37,6 +38,9 @@ public struct ApartmentView: View {
                     Text(apartment.name)
                         .font(.headline)
                         .foregroundColor(Color("TextBlackPrimary"))
+                    Text(apartment.address)
+                        .font(.subheadline)
+                        .foregroundColor(Color("TextBlackSecondary"))
                 }
                 .padding(12)
             }
@@ -132,7 +136,7 @@ public struct ApartmentView: View {
                     Text("Hello World")
                 }
                 .frame(minWidth: 200, maxWidth: 320)
-                .navigationTitle("New Tax / Surcharge")
+                .navigationTitle("New Apartment")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
