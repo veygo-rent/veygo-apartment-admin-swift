@@ -107,7 +107,37 @@ struct TaxView: View {
             Alert(title: Text("Error"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
         }
         .sheet(isPresented: $showAddTaxView) {
-            
+            NavigationStack {
+                VStack (spacing: 28) {
+                    TextInputField(placeholder: "Tax Name", text: $newTaxName)
+                    TextInputField(placeholder: "Tax Rate", text: $newTaxRate, endingString: "%")
+                }
+                .frame(minWidth: 200, maxWidth: 320)
+                .navigationTitle("New Tax / Surcharge")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            newTaxName = ""
+                            newTaxRate = ""
+                            showAddTaxView = false
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            showAddTaxView = false
+                            // Save action here
+                            // Ends here
+                            refreshTaxes()
+                        } label: {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+            .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
         }
     }
     
