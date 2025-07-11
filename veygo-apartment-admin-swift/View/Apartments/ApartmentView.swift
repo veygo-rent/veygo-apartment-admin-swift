@@ -161,6 +161,7 @@ public struct ApartmentView: View {
                         } label: {
                             Image(systemName: "checkmark")
                         }
+                        .buttonStyle(.glassProminent)
                     }
                 }
             }

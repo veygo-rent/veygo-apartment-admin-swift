@@ -30,8 +30,8 @@ public struct SettingView: View {
                 .listRowBackground(Color("TextFieldBg"))
                 
                 Section() {
-                    NavigationLink("Phone", value: Destination.phone)
-                    NavigationLink("Email", value: Destination.email)
+                    NavigationLink("Verify Phone Number", value: Destination.phone)
+                    NavigationLink(session.user?.emailIsValid() ?? false ? "Verify Email" : "Verify Email to Continue", value: Destination.email)
                 }
                 .listRowBackground(Color("TextFieldBg"))
                 

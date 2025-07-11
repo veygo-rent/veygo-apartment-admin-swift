@@ -1,13 +1,13 @@
 //
-//  TaxView.swift
+//  TollCompanyView.swift
 //  veygo-apartment-admin-swift
 //
-//  Created by Shenghong Zhou on 7/10/25.
+//  Created by Shenghong Zhou on 7/11/25.
 //
 
 import SwiftUI
 
-struct TaxView: View {
+struct TollCompanyView: View {
     
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
@@ -16,45 +16,45 @@ struct TaxView: View {
     @AppStorage("token") var token: String = ""
     @AppStorage("user_id") var userId: Int = 0
     
-    @State private var taxes: [Tax] = []
+    @State private var tollCompanies: [TransponderCompany] = []
     @State private var searchText: String = ""
     
-    @State private var seletedTax: Tax.ID? = nil
+    @State private var seletedTollCompany: TransponderCompany.ID? = nil
     
-    @State private var showAddTaxView: Bool = false
+    @State private var showAddTollCompanyView: Bool = false
     
     @State private var newTaxName: String = ""
     @State private var newTaxRate: String = ""
     
-    private var filteredTaxes: [Tax] {
-        if searchText.isEmpty { return taxes }
-        return taxes.filter {
+    private var filteredTollCompanies: [TransponderCompany] {
+        if searchText.isEmpty { return tollCompanies }
+        return tollCompanies.filter {
             $0.name.localizedCaseInsensitiveContains(searchText)
         }
     }
     
     var body: some View {
         NavigationSplitView {
-            List(filteredTaxes, selection: $seletedTax) { tax in
+            List(filteredTollCompanies, selection: $seletedTollCompany) { tollCompany in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(tax.name)
+                    Text(tollCompany.name)
                         .font(.headline)
                         .foregroundColor(Color("TextBlackPrimary"))
                 }
                 .padding(12)
             }
-            .searchable(text: $searchText, prompt: "Search taxes")
+            .searchable(text: $searchText, prompt: "Search toll companies")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        refreshTaxes()
+                        refreshTollCompanies()
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        showAddTaxView.toggle()
+                        showAddTollCompanyView.toggle()
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -63,33 +63,78 @@ struct TaxView: View {
         } detail: {
             ZStack {
                 Color("MainBG").ignoresSafeArea()
-                if let taxID = seletedTax, let tax = taxes.getItemBy(id: taxID) {
+                if let tcID = seletedTollCompany, let tc = tollCompanies.getItemBy(id: tcID) {
                     List {
-                        Text("\(tax.name)")
+                        Text("\(tc.name)")
                             .foregroundColor(Color("TextBlackPrimary"))
                             .font(.largeTitle)
                             .fontWeight(.thin)
                             .padding(.vertical, 10)
                             .listRowBackground(Color("TextFieldBg"))
                         HStack (spacing: 0) {
-                            Text("Multiplier: ")
+                            Text("Custom Prefix: ")
                                 .fontWeight(.semibold)
                                 .foregroundColor(Color("TextBlackPrimary"))
                             Spacer()
-                            Text("\(String(format: "%.2f", tax.multiplier * 100))%")
+                            Text("\(tc.customPrefixForTransactionName)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
                         .listRowBackground(Color("TextFieldBg"))
                         HStack (spacing: 0) {
-                            Text("Is effective: ")
+                            Text("Transaction Name Field: ")
                                 .fontWeight(.semibold)
                                 .foregroundColor(Color("TextBlackPrimary"))
                             Spacer()
-                            Text("\(tax.isEffective ? "Yes" : "No")")
+                            Text("\(tc.correspondingKeyForTransactionName)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
                         .listRowBackground(Color("TextFieldBg"))
-                        PrimaryButton(text: "Make effective / Ineffective") {
+                        HStack (spacing: 0) {
+                            Text("Vehicle ID Field: ")
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color("TextBlackPrimary"))
+                            Spacer()
+                            Text("\(tc.correspondingKeyForVehicleId)")
+                                .foregroundColor(Color("TextBlackPrimary"))
+                        }
+                        .listRowBackground(Color("TextFieldBg"))
+                        HStack (spacing: 0) {
+                            Text("Transaction Time Field: ")
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color("TextBlackPrimary"))
+                            Spacer()
+                            Text("\(tc.correspondingKeyForTransactionTime)")
+                                .foregroundColor(Color("TextBlackPrimary"))
+                        }
+                        .listRowBackground(Color("TextFieldBg"))
+                        HStack (spacing: 0) {
+                            Text("Transaction Time Format: ")
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color("TextBlackPrimary"))
+                            Spacer()
+                            Text("\(tc.timestampFormat)")
+                                .foregroundColor(Color("TextBlackPrimary"))
+                        }
+                        .listRowBackground(Color("TextFieldBg"))
+                        HStack (spacing: 0) {
+                            Text("Transaction Timezone: ")
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color("TextBlackPrimary"))
+                            Spacer()
+                            Text("\(tc.timezone ?? "Default [UTC]")")
+                                .foregroundColor(Color("TextBlackPrimary"))
+                        }
+                        .listRowBackground(Color("TextFieldBg"))
+                        HStack (spacing: 0) {
+                            Text("Transaction Amount Field: ")
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color("TextBlackPrimary"))
+                            Spacer()
+                            Text("\(tc.correspondingKeyForTransactionAmount)")
+                                .foregroundColor(Color("TextBlackPrimary"))
+                        }
+                        .listRowBackground(Color("TextFieldBg"))
+                        PrimaryButton(text: "Upload Tolls") {
                             // do something
                         }
                         .listRowBackground(Color("TextFieldBg"))
@@ -99,38 +144,38 @@ struct TaxView: View {
             }
         }
         .onAppear {
-            refreshTaxes()
+            refreshTollCompanies()
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
         .alert(isPresented: $showAlert) {
             Alert(title: Text("Error"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
         }
-        .sheet(isPresented: $showAddTaxView) {
+        .sheet(isPresented: $showAddTollCompanyView) {
             NavigationStack {
                 VStack (spacing: 28) {
                     TextInputField(placeholder: "Tax Name", text: $newTaxName)
                     TextInputField(placeholder: "Tax Rate", text: $newTaxRate, endingString: "%")
                 }
                 .frame(minWidth: 200, maxWidth: 320)
-                .navigationTitle("New Tax / Surcharge")
+                .navigationTitle("New Toll Company")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button {
                             newTaxName = ""
                             newTaxRate = ""
-                            showAddTaxView = false
+                            showAddTollCompanyView = false
                         } label: {
                             Image(systemName: "xmark")
                         }
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button {
-                            showAddTaxView = false
+                            showAddTollCompanyView = false
                             // Save action here
                             // Ends here
-                            refreshTaxes()
+                            refreshTollCompanies()
                         } label: {
                             Image(systemName: "checkmark")
                         }
@@ -142,8 +187,8 @@ struct TaxView: View {
         }
     }
     
-    func refreshTaxes() {
-        let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+    func refreshTollCompanies() {
+        let request = veygoCurlRequest(url: "/api/v1/toll/get-company", method: "GET", headers: ["auth": "\(token)$\(userId)"])
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 DispatchQueue.main.async {
@@ -165,10 +210,10 @@ struct TaxView: View {
                 // Update AppStorage
                 self.token = extractToken(from: response)!
                 let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let taxesData = responseJSON?["taxes"],
-                   let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
-                   let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
-                    taxes = decodedTaxes
+                if let tcsData = responseJSON?["transponder_companies"],
+                   let tcsJSONArray = try? JSONSerialization.data(withJSONObject: tcsData),
+                   let decodedTCs = try? VeygoJsonStandard.shared.decoder.decode([TransponderCompany].self, from: tcsJSONArray) {
+                    tollCompanies = decodedTCs
                 }
             } else if httpResponse.statusCode == 401 {
                 DispatchQueue.main.async {
@@ -186,5 +231,5 @@ struct TaxView: View {
 }
 
 #Preview {
-    TaxView()
+    TollCompanyView()
 }

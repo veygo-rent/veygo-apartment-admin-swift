@@ -35,7 +35,7 @@ struct AppView: View {
                             }
                             
                             Tab("Toll Companies", systemImage: "car.front.waves.down", value: RootDestination.toll_companies) {
-                                Text("Toll Companies")
+                                TollCompanyView()
                             }
                             
                             Tab("Apartments", systemImage: "building.2", value: RootDestination.apartments) {

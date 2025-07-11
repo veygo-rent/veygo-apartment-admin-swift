@@ -128,6 +128,18 @@ struct Tax: Identifiable, Equatable, Codable {
     var isEffective: Bool
 }
 
+struct TransponderCompany: Identifiable, Equatable, Codable {
+    var id: Int
+    var name: String
+    var correspondingKeyForVehicleId: String
+    var correspondingKeyForTransactionName: String
+    var customPrefixForTransactionName: String
+    var correspondingKeyForTransactionTime: String
+    var correspondingKeyForTransactionAmount: String
+    var timestampFormat: String
+    var timezone: String?
+}
+
 class AdminSession: ObservableObject {
     @Published var user: PublishRenter? = nil
     
