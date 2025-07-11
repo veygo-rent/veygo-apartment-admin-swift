@@ -11,10 +11,10 @@ public struct SettingView: View {
     /// Navigation path for back‑tracking through nested setting pages.
     @State private var path: [Destination] = []
     
-    @AppStorage("token") var token: String = ""
-    @AppStorage("user_id") var userId: Int = 0
+    @AppStorage("token") private var token: String = ""
+    @AppStorage("user_id") private var userId: Int = 0
     
-    @EnvironmentObject var session: AdminSession
+    @EnvironmentObject private var session: AdminSession
     
     public var body: some View {
         NavigationStack(path: $path) {

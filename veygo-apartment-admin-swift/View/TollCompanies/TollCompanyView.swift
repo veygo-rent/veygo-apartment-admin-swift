@@ -12,11 +12,11 @@ struct TollCompanyView: View {
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
     
-    @EnvironmentObject var session: AdminSession
-    @AppStorage("token") var token: String = ""
-    @AppStorage("user_id") var userId: Int = 0
+    @EnvironmentObject private var session: AdminSession
+    @AppStorage("token") private var token: String = ""
+    @AppStorage("user_id") private var userId: Int = 0
     
-    @State private var tollCompanies: [TransponderCompany] = []
+    @Binding var tollCompanies: [TransponderCompany]
     @State private var searchText: String = ""
     
     @State private var seletedTollCompany: TransponderCompany.ID? = nil
@@ -228,8 +228,4 @@ struct TollCompanyView: View {
             }
         }.resume()
     }
-}
-
-#Preview {
-    TollCompanyView()
 }

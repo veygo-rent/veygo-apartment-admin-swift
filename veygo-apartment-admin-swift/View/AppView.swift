@@ -13,8 +13,14 @@ private enum RootDestination: String, Identifiable, Hashable {
 }
 
 struct AppView: View {
-    @EnvironmentObject var session: AdminSession
+    
+    @EnvironmentObject private var session: AdminSession
     @State private var selected: RootDestination = .overview
+    
+    @State private var apartments: [Apartment] = []
+    @State private var renters: [PublishRenter] = []
+    @State private var taxes: [Tax] = []
+    @State private var tollCompanies: [TransponderCompany] = []
     
     var body: some View {
         if session.user == nil {
@@ -31,15 +37,15 @@ struct AppView: View {
                     if session.user!.employeeTier == .admin {
                         TabSection("Administration") {
                             Tab("Taxes", systemImage: "percent", value: RootDestination.taxes) {
-                                TaxView()
+                                TaxView(taxes: $taxes)
                             }
                             
                             Tab("Toll Companies", systemImage: "car.front.waves.down", value: RootDestination.toll_companies) {
-                                TollCompanyView()
+                                TollCompanyView(tollCompanies: $tollCompanies)
                             }
                             
                             Tab("Apartments", systemImage: "building.2", value: RootDestination.apartments) {
-                                ApartmentView()
+                                ApartmentView(apartments: $apartments)
                             }
                             
                             Tab("Reports", systemImage: "chart.line.text.clipboard", value: RootDestination.reports) {
@@ -50,7 +56,7 @@ struct AppView: View {
                     
                     TabSection("Rentals") {
                         Tab("Renters", systemImage: "person", value: RootDestination.renters) {
-                            RenterView()
+                            RenterView(renters: $renters)
                         }
                         
                         Tab("Vehicles", systemImage: "car.rear", value: RootDestination.vehicles) {

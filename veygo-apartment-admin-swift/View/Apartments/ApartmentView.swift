@@ -12,11 +12,11 @@ public struct ApartmentView: View {
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
     
-    @EnvironmentObject var session: AdminSession
-    @AppStorage("token") var token: String = ""
-    @AppStorage("user_id") var userId: Int = 0
+    @EnvironmentObject private var session: AdminSession
+    @AppStorage("token") private var token: String = ""
+    @AppStorage("user_id") private var userId: Int = 0
     
-    @State private var apartments: [Apartment] = []
+    @Binding var apartments: [Apartment]
     @State private var searchText: String = ""
     
     @State private var seletedApartment: Apartment.ID? = nil

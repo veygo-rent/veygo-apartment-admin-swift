@@ -12,11 +12,11 @@ struct TaxView: View {
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
     
-    @EnvironmentObject var session: AdminSession
-    @AppStorage("token") var token: String = ""
-    @AppStorage("user_id") var userId: Int = 0
+    @EnvironmentObject private var session: AdminSession
+    @AppStorage("token") private var token: String = ""
+    @AppStorage("user_id") private var userId: Int = 0
     
-    @State private var taxes: [Tax] = []
+    @Binding var taxes: [Tax]
     @State private var searchText: String = ""
     
     @State private var seletedTax: Tax.ID? = nil
@@ -183,8 +183,4 @@ struct TaxView: View {
             }
         }.resume()
     }
-}
-
-#Preview {
-    TaxView()
 }

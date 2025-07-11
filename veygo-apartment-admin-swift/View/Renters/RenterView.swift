@@ -12,11 +12,11 @@ public struct RenterView: View {
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
     
-    @EnvironmentObject var session: AdminSession
-    @AppStorage("token") var token: String = ""
-    @AppStorage("user_id") var userId: Int = 0
+    @EnvironmentObject private var session: AdminSession
+    @AppStorage("token") private var token: String = ""
+    @AppStorage("user_id") private var userId: Int = 0
     
-    @State private var renters: [PublishRenter] = []
+    @Binding var renters: [PublishRenter]
     @State private var searchText: String = ""
     
     @State private var doNotRentRecords: [DoNotRentList] = [DoNotRentList(id: 1, note: "Renter doing illegal activities with our vehicle. "), DoNotRentList(id: 2, note: "Renter intentionally running into a police vehicle. ")]
