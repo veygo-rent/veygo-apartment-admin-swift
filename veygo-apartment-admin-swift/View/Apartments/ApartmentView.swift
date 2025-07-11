@@ -24,10 +24,16 @@ public struct ApartmentView: View {
     @State private var showAddApartmentView: Bool = false
     
     private var filteredApartments: [Apartment] {
-        if searchText.isEmpty { return apartments }
+        if searchText.isEmpty {
+            return apartments.filter { apt in
+                apt.id != 1
+            }
+        }
         return apartments.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText) ||
-            $0.address.localizedCaseInsensitiveContains(searchText)
+            $0.id != 1 && (
+                $0.name.localizedCaseInsensitiveContains(searchText) ||
+                $0.address.localizedCaseInsensitiveContains(searchText)
+            )
         }
     }
     
