@@ -115,10 +115,10 @@ struct Apartment: Identifiable, Equatable, Codable {
     var pcdwExtProtectionRate: Double
     var rsaProtectionRate: Double
     var paiProtectionRate: Double
-    var salesTaxRate: Double
     var isOperating: Bool
     var isPublic: Bool
     var uniId: Int
+    var taxes: [Int?]
 }
 
 struct Tax: Identifiable, Equatable, Codable {
