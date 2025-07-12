@@ -46,6 +46,7 @@ public struct ApartmentView: View {
     @State private var isPublic: Bool? = nil
     @State private var uniId: Apartment.ID? = nil
     @State private var aptTaxes: [Int?] = []
+    @State private var aptTaxSearch: String = ""
     
     private var filteredApartments: [Apartment] {
         if searchText.isEmpty {
@@ -186,25 +187,25 @@ public struct ApartmentView: View {
                 ScrollView {
                     VStack(spacing: 28) {
                         TextInputField(placeholder: "New Apartment Name", text: $newAptName)
-                        HStack {
+                        HStack(spacing: 22) {
                             TextInputField(placeholder: "Email", text: $newAptEmail)
                             TextInputField(placeholder: "Phone", text: $newAptPhone)
                         }
                         TextInputField(placeholder: "Address", text: $newAptAddress)
                         TextInputField(placeholder: "Accepted School Email Domain", text: $acceptedSchoolEmailDomain)
-                        HStack {
+                        HStack(spacing: 22) {
                             TextInputField(placeholder: "Duration Rate", text: $durationRate)
                             TextInputField(placeholder: "Free Tier Hours", text: $freeTierHours)
                         }
-                        HStack {
+                        HStack(spacing: 22) {
                             TextInputField(placeholder: "Silver Tier Hours", text: $silverTierHours)
                             TextInputField(placeholder: "Silver Tier Rate", text: $silverTierRate)
                         }
-                        HStack {
+                        HStack(spacing: 22) {
                             TextInputField(placeholder: "Gold Tier Hours", text: $goldTierHours)
                             TextInputField(placeholder: "Gold Tier Rate", text: $goldTierRate)
                         }
-                        HStack {
+                        HStack(spacing: 22) {
                             TextInputField(placeholder: "Platinum Tier Hours", text: $platinumTierHours)
                             TextInputField(placeholder: "Platinum Tier Rate", text: $platinumTierRate)
                         }
@@ -213,12 +214,13 @@ public struct ApartmentView: View {
                         TextInputField(placeholder: "PCDW Ext Protection Rate", text: $pcdwExtProtectionRate)
                         TextInputField(placeholder: "RSA Protection Rate", text: $rsaProtectionRate)
                         TextInputField(placeholder: "PAI Protection Rate", text: $paiProtectionRate)
+                        ListInputField(searchText: $aptTaxSearch, listOfOptions: $taxes, selectedOptions: $aptTaxes, placeholder: "Add Taxes")
                         VStack (alignment: .leading, spacing: 10) {
                             Text("Apartment Belongs To:")
                                 .foregroundColor(Color("TextFieldWordColor").opacity(0.65))
                             ZStack {
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color("TextFieldBg"))
+                                    .fill(Color("TextFieldBg").opacity(0.45))
                                 Picker("Belongs To", selection: $uniId) {
                                     ForEach(universities) { uni in
                                         Text(uni.name).tag(uni.id)
