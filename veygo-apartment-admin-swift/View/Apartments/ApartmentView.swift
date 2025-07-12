@@ -44,7 +44,7 @@ public struct ApartmentView: View {
     @State private var paiProtectionRate: String = ""
     @State private var isOperating: Bool? = nil
     @State private var isPublic: Bool? = nil
-    @State private var uniId: String = ""
+    @State private var uniId: Apartment.ID? = nil
     @State private var aptTaxes: [Int?] = []
     
     private var filteredApartments: [Apartment] {
@@ -58,6 +58,12 @@ public struct ApartmentView: View {
                 $0.name.localizedCaseInsensitiveContains(searchText) ||
                 $0.address.localizedCaseInsensitiveContains(searchText)
             )
+        }
+    }
+    
+    private var universities: [Apartment] {
+        return apartments.filter { apt in
+            apt.uniId == 0 || apt.uniId == 1
         }
     }
     
@@ -177,10 +183,56 @@ public struct ApartmentView: View {
         }
         .sheet(isPresented: $showAddApartmentView) {
             NavigationStack {
-                VStack (spacing: 28) {
-                    TextInputField(placeholder: "New Apartment Name", text: $newAptName)
+                ScrollView {
+                    VStack(spacing: 28) {
+                        TextInputField(placeholder: "New Apartment Name", text: $newAptName)
+                        HStack {
+                            TextInputField(placeholder: "Email", text: $newAptEmail)
+                            TextInputField(placeholder: "Phone", text: $newAptPhone)
+                        }
+                        TextInputField(placeholder: "Address", text: $newAptAddress)
+                        TextInputField(placeholder: "Accepted School Email Domain", text: $acceptedSchoolEmailDomain)
+                        HStack {
+                            TextInputField(placeholder: "Duration Rate", text: $durationRate)
+                            TextInputField(placeholder: "Free Tier Hours", text: $freeTierHours)
+                        }
+                        HStack {
+                            TextInputField(placeholder: "Silver Tier Hours", text: $silverTierHours)
+                            TextInputField(placeholder: "Silver Tier Rate", text: $silverTierRate)
+                        }
+                        HStack {
+                            TextInputField(placeholder: "Gold Tier Hours", text: $goldTierHours)
+                            TextInputField(placeholder: "Gold Tier Rate", text: $goldTierRate)
+                        }
+                        HStack {
+                            TextInputField(placeholder: "Platinum Tier Hours", text: $platinumTierHours)
+                            TextInputField(placeholder: "Platinum Tier Rate", text: $platinumTierRate)
+                        }
+                        TextInputField(placeholder: "Liability Protection Rate", text: $liabilityProtectionRate)
+                        TextInputField(placeholder: "PCDW Protection Rate", text: $pcdwProtectionRate)
+                        TextInputField(placeholder: "PCDW Ext Protection Rate", text: $pcdwExtProtectionRate)
+                        TextInputField(placeholder: "RSA Protection Rate", text: $rsaProtectionRate)
+                        TextInputField(placeholder: "PAI Protection Rate", text: $paiProtectionRate)
+                        VStack (alignment: .leading, spacing: 10) {
+                            Text("Apartment Belongs To:")
+                                .foregroundColor(Color("TextFieldWordColor").opacity(0.65))
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color("TextFieldBg"))
+                                Picker("Belongs To", selection: $uniId) {
+                                    ForEach(universities) { uni in
+                                        Text(uni.name).tag(uni.id)
+                                            .foregroundColor(Color("TextFieldWordColor"))
+                                    }
+                                }
+                                .pickerStyle(.wheel)
+                            }
+                            .frame(height: 120)
+                        }
+                    }
                 }
-                .frame(minWidth: 200, maxWidth: 320)
+                .frame(minWidth: 200, maxWidth: 420)
+                .padding(.vertical)
                 .navigationTitle("New Apartment")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -199,6 +251,7 @@ public struct ApartmentView: View {
                             Task {
                                 do {
                                     try await refreshApartments()
+                                    uniId = universities.first?.id ?? 0
                                 } catch {
                                     alertMessage = "Error: \(error.localizedDescription)"
                                     showAlert = true
@@ -262,4 +315,3 @@ public struct ApartmentView: View {
     }
     
 }
-
