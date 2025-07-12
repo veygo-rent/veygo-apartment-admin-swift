@@ -47,7 +47,14 @@ struct TaxView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        refreshTaxes()
+                        Task {
+                            do {
+                                try await refreshTaxes()
+                            } catch {
+                                alertMessage = "Error: \(error.localizedDescription)"
+                                showAlert = true
+                            }
+                        }
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
                     }
@@ -99,7 +106,14 @@ struct TaxView: View {
             }
         }
         .onAppear {
-            refreshTaxes()
+            Task {
+                do {
+                    try await refreshTaxes()
+                } catch {
+                    alertMessage = "Error: \(error.localizedDescription)"
+                    showAlert = true
+                }
+            }
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
@@ -130,7 +144,14 @@ struct TaxView: View {
                             showAddTaxView = false
                             // Save action here
                             // Ends here
-                            refreshTaxes()
+                            Task {
+                                do {
+                                    try await refreshTaxes()
+                                } catch {
+                                    alertMessage = "Error: \(error.localizedDescription)"
+                                    showAlert = true
+                                }
+                            }
                         } label: {
                             Image(systemName: "checkmark")
                         }
@@ -142,45 +163,26 @@ struct TaxView: View {
         }
     }
     
-    func refreshTaxes() {
+    func refreshTaxes() async throws {
         let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        
+        if httpResponse.statusCode == 200 {
+            self.token = extractToken(from: response)!
+            let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if let taxesData = responseJSON?["taxes"],
+               let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
+               let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
                 DispatchQueue.main.async {
-                    alertMessage = "Network error: \(error.localizedDescription)"
-                    showAlert = true
-                }
-                return
-            }
-            
-            guard let httpResponse = response as? HTTPURLResponse, let data = data else {
-                DispatchQueue.main.async {
-                    alertMessage = "Invalid server response."
-                    showAlert = true
-                }
-                return
-            }
-            
-            if httpResponse.statusCode == 200 {
-                // Update AppStorage
-                self.token = extractToken(from: response)!
-                let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let taxesData = responseJSON?["taxes"],
-                   let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
-                   let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
-                    taxes = decodedTaxes
-                }
-            } else if httpResponse.statusCode == 401 {
-                DispatchQueue.main.async {
-                    alertMessage = "Reverify login status failed"
-                    showAlert = true
-                }
-            } else {
-                DispatchQueue.main.async {
-                    alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                    showAlert = true
+                    self.taxes = decodedTaxes
                 }
             }
-        }.resume()
+        } else {
+            throw NSError(domain: "Server", code: httpResponse.statusCode, userInfo: nil)
+        }
     }
 }

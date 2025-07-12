@@ -25,11 +25,16 @@ struct veygo_apartment_admin_swift: App {
                 ContentView()
                     .environmentObject(session)
             }
-            .onAppear() {
-                session.validateTokenAndFetchUser { completion in
-                    // do someting if pull successfully
+            .onAppear {
+                Task {
+                    do {
+                        try await session.validateTokenAndFetchUser()
+                        // do something if pull successfully
+                    } catch {
+                        print("Failed to validate token and fetch user: \(error)")
+                    }
+                    didLoad.toggle()
                 }
-                didLoad.toggle()
             }
         }
     }

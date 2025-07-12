@@ -21,6 +21,7 @@ struct AppView: View {
     @State private var renters: [PublishRenter] = []
     @State private var taxes: [Tax] = []
     @State private var tollCompanies: [TransponderCompany] = []
+    @State private var aptTaxes: [Int?] = []
     
     var body: some View {
         if session.user == nil {
@@ -45,7 +46,7 @@ struct AppView: View {
                             }
                             
                             Tab("Apartments", systemImage: "building.2", value: RootDestination.apartments) {
-                                ApartmentView(apartments: $apartments)
+                                ApartmentView(apartments: $apartments, taxes: $taxes)
                             }
                             
                             Tab("Reports", systemImage: "chart.line.text.clipboard", value: RootDestination.reports) {

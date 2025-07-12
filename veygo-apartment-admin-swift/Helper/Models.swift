@@ -147,49 +147,36 @@ class AdminSession: ObservableObject {
     @AppStorage("user_id") var userId: Int = 0
 
     // 用 token 和 user_id 调用后端 API 验证并查找用户信息 对了—>200, 不对—>re-login
-    func validateTokenAndFetchUser(completion: @escaping (Bool) -> Void) {
-        let request = veygoCurlRequest(url: "/api/v1/admin/retrieve", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        if (token == "" || userId == 0) {
-            completion(false)
-            return
+    func validateTokenAndFetchUser() async throws {
+        if token.isEmpty || userId == 0 {
+            throw URLError(.userAuthenticationRequired)
         }
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("Network error: \(error.localizedDescription)")
-                completion(false)
-                return
-            }
+        let request = veygoCurlRequest(url: "/api/v1/admin/retrieve", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+        let (data, response) = try await URLSession.shared.data(for: request)
 
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200,
-                  let data = data else {
-                print("Invalid or unauthorized response")
-                completion(false)
-                return
-            }
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            print("Invalid or unauthorized response")
+            throw URLError(.badServerResponse)
+        }
 
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let renter = json["admin"],
-               let renterData = try? JSONSerialization.data(withJSONObject: renter) {
-                Task { @MainActor in
-                    if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterData) {
-                        let newToken: String = httpResponse.value(forHTTPHeaderField: "token")!
-                        self.user = decodedUser
-                        self.token = newToken
-                        self.userId = decodedUser.id
-                        print("New token refreshed.")
-                        print("User loaded via token: \(decodedUser.name)")
-                        completion(true)
-                    } else {
-                        print("Failed to parse user from response")
-                        completion(false)
-                    }
-                }
-            } else {
-                print("Failed to parse user from response")
-                completion(false)
-            }
-        }.resume()
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let renter = json["admin"],
+              let renterData = try? JSONSerialization.data(withJSONObject: renter),
+              let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterData) else {
+            print("Failed to parse user from response")
+            throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Could not decode admin user"))
+        }
+
+        let newToken = httpResponse.value(forHTTPHeaderField: "token")!
+
+        await MainActor.run {
+            self.user = decodedUser
+            self.token = newToken
+            self.userId = decodedUser.id
+            print("New token refreshed.")
+            print("User loaded via token: \(decodedUser.name)")
+        }
     }
 }

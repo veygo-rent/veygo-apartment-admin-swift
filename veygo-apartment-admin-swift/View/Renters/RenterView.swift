@@ -54,11 +54,12 @@ public struct RenterView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        refreshRenters()
+                        Task {
+                            await refreshRenters()
+                        }
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
                     }
-                    
                 }
             }
         } detail: {
@@ -70,53 +71,54 @@ public struct RenterView: View {
             }
         }
         .onAppear {
-            refreshRenters()
+            Task {
+                await refreshRenters()
+            }
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
     }
     
-    func refreshRenters() {
+    func refreshRenters() async {
         let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                DispatchQueue.main.async {
-                    alertMessage = "Network error: \(error.localizedDescription)"
-                    showAlert = true
-                }
-                return
-            }
-            
-            guard let httpResponse = response as? HTTPURLResponse, let data = data else {
-                DispatchQueue.main.async {
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                await MainActor.run {
                     alertMessage = "Invalid server response."
                     showAlert = true
                 }
                 return
             }
-            
+
             if httpResponse.statusCode == 200 {
-                // Update AppStorage
                 self.token = extractToken(from: response)!
-                
                 let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 if let renterData = responseJSON?["renters"],
                    let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
                    let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
-                    renters = decodedUser
+                    await MainActor.run {
+                        renters = decodedUser
+                    }
                 }
             } else if httpResponse.statusCode == 401 {
-                DispatchQueue.main.async {
+                await MainActor.run {
                     alertMessage = "Reverify login status failed"
                     showAlert = true
                 }
             } else {
-                DispatchQueue.main.async {
+                await MainActor.run {
                     alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
                     showAlert = true
                 }
             }
-        }.resume()
+        } catch {
+            await MainActor.run {
+                alertMessage = "Network error: \(error.localizedDescription)"
+                showAlert = true
+            }
+        }
     }
 }
 

@@ -17,11 +17,35 @@ public struct ApartmentView: View {
     @AppStorage("user_id") private var userId: Int = 0
     
     @Binding var apartments: [Apartment]
+    @Binding var taxes: [Tax]
     @State private var searchText: String = ""
     
     @State private var seletedApartment: Apartment.ID? = nil
     
     @State private var showAddApartmentView: Bool = false
+    
+    @State private var newAptName: String = ""
+    @State private var newAptEmail: String = ""
+    @State private var newAptPhone: String = ""
+    @State private var newAptAddress: String = ""
+    @State private var acceptedSchoolEmailDomain: String = ""
+    @State private var freeTierHours: String = ""
+    @State private var silverTierHours: String = ""
+    @State private var silverTierRate: String = ""
+    @State private var goldTierHours: String = ""
+    @State private var goldTierRate: String = ""
+    @State private var platinumTierHours: String = ""
+    @State private var platinumTierRate: String = ""
+    @State private var durationRate: String = ""
+    @State private var liabilityProtectionRate: String = ""
+    @State private var pcdwProtectionRate: String = ""
+    @State private var pcdwExtProtectionRate: String = ""
+    @State private var rsaProtectionRate: String = ""
+    @State private var paiProtectionRate: String = ""
+    @State private var isOperating: Bool? = nil
+    @State private var isPublic: Bool? = nil
+    @State private var uniId: String = ""
+    @State private var aptTaxes: [Int?] = []
     
     private var filteredApartments: [Apartment] {
         if searchText.isEmpty {
@@ -54,7 +78,14 @@ public struct ApartmentView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        refreshApartments()
+                        Task {
+                            do {
+                                try await refreshApartments()
+                            } catch {
+                                alertMessage = "Error: \(error.localizedDescription)"
+                                showAlert = true
+                            }
+                        }
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
                     }
@@ -129,7 +160,15 @@ public struct ApartmentView: View {
             }
         }
         .onAppear {
-            refreshApartments()
+            Task {
+                do {
+                    try await refreshApartments()
+                    try await refreshTaxes()
+                } catch {
+                    alertMessage = "Error: \(error.localizedDescription)"
+                    showAlert = true
+                }
+            }
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
@@ -139,7 +178,7 @@ public struct ApartmentView: View {
         .sheet(isPresented: $showAddApartmentView) {
             NavigationStack {
                 VStack (spacing: 28) {
-                    Text("Hello World")
+                    TextInputField(placeholder: "New Apartment Name", text: $newAptName)
                 }
                 .frame(minWidth: 200, maxWidth: 320)
                 .navigationTitle("New Apartment")
@@ -157,7 +196,14 @@ public struct ApartmentView: View {
                             showAddApartmentView = false
                             // Save action here
                             // Ends here
-                            refreshApartments()
+                            Task {
+                                do {
+                                    try await refreshApartments()
+                                } catch {
+                                    alertMessage = "Error: \(error.localizedDescription)"
+                                    showAlert = true
+                                }
+                            }
                         } label: {
                             Image(systemName: "checkmark")
                         }
@@ -169,45 +215,51 @@ public struct ApartmentView: View {
         }
     }
     
-    func refreshApartments() {
+    func refreshApartments() async throws {
         let request = veygoCurlRequest(url: "/api/v1/apartment/get-all-apartments", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        
+        if httpResponse.statusCode == 200 {
+            self.token = extractToken(from: response)!
+            let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if let apartmentsData = responseJSON?["apartments"],
+               let apartmentsJSONArray = try? JSONSerialization.data(withJSONObject: apartmentsData),
+               let decodedApartments = try? VeygoJsonStandard.shared.decoder.decode([Apartment].self, from: apartmentsJSONArray) {
                 DispatchQueue.main.async {
-                    alertMessage = "Network error: \(error.localizedDescription)"
-                    showAlert = true
-                }
-                return
-            }
-            
-            guard let httpResponse = response as? HTTPURLResponse, let data = data else {
-                DispatchQueue.main.async {
-                    alertMessage = "Invalid server response."
-                    showAlert = true
-                }
-                return
-            }
-            
-            if httpResponse.statusCode == 200 {
-                // Update AppStorage
-                self.token = extractToken(from: response)!
-                let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let apartmentsData = responseJSON?["apartments"],
-                   let apartmentsJSONArray = try? JSONSerialization.data(withJSONObject: apartmentsData),
-                   let decodedApartments = try? VeygoJsonStandard.shared.decoder.decode([Apartment].self, from: apartmentsJSONArray) {
-                    apartments = decodedApartments
-                }
-            } else if httpResponse.statusCode == 401 {
-                DispatchQueue.main.async {
-                    alertMessage = "Reverify login status failed"
-                    showAlert = true
-                }
-            } else {
-                DispatchQueue.main.async {
-                    alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                    showAlert = true
+                    self.apartments = decodedApartments
                 }
             }
-        }.resume()
+        } else {
+            throw NSError(domain: "Server", code: httpResponse.statusCode, userInfo: nil)
+        }
     }
+    
+    func refreshTaxes() async throws {
+        let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        
+        if httpResponse.statusCode == 200 {
+            self.token = extractToken(from: response)!
+            let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if let taxesData = responseJSON?["taxes"],
+               let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
+               let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
+                DispatchQueue.main.async {
+                    self.taxes = decodedTaxes
+                }
+            }
+        } else {
+            throw NSError(domain: "Server", code: httpResponse.statusCode, userInfo: nil)
+        }
+    }
+    
 }
+
