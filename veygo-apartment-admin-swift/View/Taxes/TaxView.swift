@@ -170,6 +170,10 @@ struct TaxView: View {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
+        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+            print("Unexpected Content-Type")
+            throw URLError(.cannotParseResponse)
+        }
         
         if httpResponse.statusCode == 200 {
             self.token = extractToken(from: response)!

@@ -274,7 +274,7 @@ public struct ApartmentView: View {
         let request = veygoCurlRequest(url: "/api/v1/apartment/get-all-apartments", method: "GET", headers: ["auth": "\(token)$\(userId)"])
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
             throw URLError(.badServerResponse)
         }
         
@@ -297,7 +297,7 @@ public struct ApartmentView: View {
         let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
             throw URLError(.badServerResponse)
         }
         

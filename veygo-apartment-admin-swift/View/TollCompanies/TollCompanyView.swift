@@ -206,6 +206,10 @@ struct TollCompanyView: View {
                 }
                 return
             }
+            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                print("Unexpected Content-Type")
+                throw URLError(.cannotParseResponse)
+            }
 
             if httpResponse.statusCode == 200 {
                 self.token = extractToken(from: response)!

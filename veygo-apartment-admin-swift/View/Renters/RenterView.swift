@@ -84,7 +84,7 @@ public struct RenterView: View {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
 
-            guard let httpResponse = response as? HTTPURLResponse else {
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
                 await MainActor.run {
                     alertMessage = "Invalid server response."
                     showAlert = true

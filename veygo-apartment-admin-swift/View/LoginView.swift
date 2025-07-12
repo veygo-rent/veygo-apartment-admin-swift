@@ -100,7 +100,8 @@ struct LoginView: View {
                 return
             }
 
-            guard let httpResponse = response as? HTTPURLResponse, let data = data else {
+            guard let httpResponse = response as? HTTPURLResponse, let data = data,
+            httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
                 DispatchQueue.main.async {
                     alertMessage = "Invalid server response."
                     showAlert = true
