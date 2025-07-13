@@ -42,11 +42,37 @@ public struct ApartmentView: View {
     @State private var pcdwExtProtectionRate: String = ""
     @State private var rsaProtectionRate: String = ""
     @State private var paiProtectionRate: String = ""
-    @State private var isOperating: Bool? = nil
-    @State private var isPublic: Bool? = nil
+    @State private var isOperating: Bool = true
+    @State private var isPublic: Bool = true
     @State private var uniId: Apartment.ID? = nil
     @State private var aptTaxes: [Int?] = []
     @State private var aptTaxSearch: String = ""
+    
+    @State private var freeTierHoursDouble: Double = 0
+    @State private var silverTierHoursDouble: Double = 0
+    @State private var silverTierRateDouble: Double = 0
+    @State private var goldTierHoursDouble: Double = 0
+    @State private var goldTierRateDouble: Double = 0
+    @State private var platinumTierHoursDouble: Double = 0
+    @State private var platinumTierRateDouble: Double = 0
+    @State private var durationRateDouble: Double = 0
+    @State private var liabilityProtectionRateDouble: Double = 0
+    @State private var pcdwProtectionRateDouble: Double = 0
+    @State private var pcdwExtProtectionRateDouble: Double = 0
+    @State private var rsaProtectionRateDouble: Double = 0
+    @State private var paiProtectionRateDouble: Double = 0
+    
+    private var isFormValid: Bool {
+        
+        let emailValidator = EmailValidator(email: newAptEmail)
+        
+        return !newAptName.isEmpty &&
+        emailValidator.isValidEmail &&
+        !newAptPhone.isEmpty &&
+        !newAptAddress.isEmpty &&
+        !acceptedSchoolEmailDomain.isEmpty
+        
+    }
     
     private var filteredApartments: [Apartment] {
         if searchText.isEmpty {
@@ -189,31 +215,141 @@ public struct ApartmentView: View {
                         TextInputField(placeholder: "New Apartment Name", text: $newAptName)
                         HStack(spacing: 22) {
                             TextInputField(placeholder: "Email", text: $newAptEmail)
+                                .onChange(of: newAptEmail) { oldValue, newValue in
+                                    newAptEmail = newValue.lowercased()
+                                }
                             TextInputField(placeholder: "Phone", text: $newAptPhone)
                         }
                         TextInputField(placeholder: "Address", text: $newAptAddress)
                         TextInputField(placeholder: "Accepted School Email Domain", text: $acceptedSchoolEmailDomain)
+                            .onChange(of: acceptedSchoolEmailDomain) { oldValue, newValue in
+                                acceptedSchoolEmailDomain = newValue.lowercased()
+                            }
                         HStack(spacing: 22) {
                             TextInputField(placeholder: "Duration Rate", text: $durationRate)
+                                .keyboardType(.decimalPad)
+                                .onChange(of: durationRate) { oldValue, newValue in
+                                    if let tempVar = Double(newValue){
+                                        self.durationRateDouble = tempVar
+                                    } else {
+                                        durationRate = oldValue
+                                    }
+                                }
                             TextInputField(placeholder: "Free Tier Hours", text: $freeTierHours)
+                                .keyboardType(.decimalPad)
+                                .onChange(of: freeTierHours) { oldValue, newValue in
+                                    if let tempVar = Double(newValue){
+                                        self.freeTierHoursDouble = tempVar
+                                    } else {
+                                        freeTierHours = oldValue
+                                    }
+                                }
                         }
                         HStack(spacing: 22) {
                             TextInputField(placeholder: "Silver Tier Hours", text: $silverTierHours)
+                                .keyboardType(.decimalPad)
+                                .onChange(of: silverTierHours) { oldValue, newValue in
+                                    if let tempVar = Double(newValue){
+                                        self.silverTierHoursDouble = tempVar
+                                    } else {
+                                        silverTierHours = oldValue
+                                    }
+                                }
                             TextInputField(placeholder: "Silver Tier Rate", text: $silverTierRate)
+                                .keyboardType(.decimalPad)
+                                .onChange(of: silverTierRate) { oldValue, newValue in
+                                    if let tempVar = Double(newValue){
+                                        self.silverTierRateDouble = tempVar
+                                    } else {
+                                        silverTierRate = oldValue
+                                    }
+                                }
                         }
                         HStack(spacing: 22) {
                             TextInputField(placeholder: "Gold Tier Hours", text: $goldTierHours)
+                                .keyboardType(.decimalPad)
+                                .onChange(of: goldTierHours) { oldValue, newValue in
+                                    if let tempVar = Double(newValue){
+                                        self.goldTierHoursDouble = tempVar
+                                    } else {
+                                        goldTierHours = oldValue
+                                    }
+                                }
                             TextInputField(placeholder: "Gold Tier Rate", text: $goldTierRate)
+                                .keyboardType(.decimalPad)
+                                .onChange(of: goldTierRate) { oldValue, newValue in
+                                    if let tempVar = Double(newValue){
+                                        self.goldTierRateDouble = tempVar
+                                    } else {
+                                        goldTierRate = oldValue
+                                    }
+                                }
                         }
                         HStack(spacing: 22) {
                             TextInputField(placeholder: "Platinum Tier Hours", text: $platinumTierHours)
+                                .keyboardType(.decimalPad)
+                                .onChange(of: platinumTierHours) { oldValue, newValue in
+                                    if let tempVar = Double(newValue){
+                                        self.platinumTierHoursDouble = tempVar
+                                    } else {
+                                        platinumTierHours = oldValue
+                                    }
+                                }
                             TextInputField(placeholder: "Platinum Tier Rate", text: $platinumTierRate)
+                                .keyboardType(.decimalPad)
+                                .onChange(of: platinumTierRate) { oldValue, newValue in
+                                    if let tempVar = Double(newValue){
+                                        self.platinumTierRateDouble = tempVar
+                                    } else {
+                                        platinumTierRate = oldValue
+                                    }
+                                }
                         }
                         TextInputField(placeholder: "Liability Protection Rate", text: $liabilityProtectionRate)
+                            .keyboardType(.decimalPad)
+                            .onChange(of: liabilityProtectionRate) { oldValue, newValue in
+                                if let tempVar = Double(newValue){
+                                    self.liabilityProtectionRateDouble = tempVar
+                                } else {
+                                    liabilityProtectionRate = oldValue
+                                }
+                            }
                         TextInputField(placeholder: "PCDW Protection Rate", text: $pcdwProtectionRate)
+                            .keyboardType(.decimalPad)
+                            .onChange(of: pcdwProtectionRate) { oldValue, newValue in
+                                if let tempVar = Double(newValue){
+                                    self.pcdwProtectionRateDouble = tempVar
+                                } else {
+                                    pcdwProtectionRate = oldValue
+                                }
+                            }
                         TextInputField(placeholder: "PCDW Ext Protection Rate", text: $pcdwExtProtectionRate)
+                            .keyboardType(.decimalPad)
+                            .onChange(of: pcdwExtProtectionRate) { oldValue, newValue in
+                                if let tempVar = Double(newValue){
+                                    self.pcdwExtProtectionRateDouble = tempVar
+                                } else {
+                                    pcdwExtProtectionRate = oldValue
+                                }
+                            }
                         TextInputField(placeholder: "RSA Protection Rate", text: $rsaProtectionRate)
+                            .keyboardType(.decimalPad)
+                            .onChange(of: rsaProtectionRate) { oldValue, newValue in
+                                if let tempVar = Double(newValue){
+                                    self.rsaProtectionRateDouble = tempVar
+                                } else {
+                                    rsaProtectionRate = oldValue
+                                }
+                            }
                         TextInputField(placeholder: "PAI Protection Rate", text: $paiProtectionRate)
+                            .keyboardType(.decimalPad)
+                            .onChange(of: paiProtectionRate) { oldValue, newValue in
+                                if let tempVar = Double(newValue){
+                                    self.paiProtectionRateDouble = tempVar
+                                } else {
+                                    paiProtectionRate = oldValue
+                                }
+                            }
                         ListInputField(searchText: $aptTaxSearch, listOfOptions: $taxes, selectedOptions: $aptTaxes, placeholder: "Add Taxes")
                         VStack (alignment: .leading, spacing: 10) {
                             Text("Apartment Belongs To:")
@@ -246,23 +382,34 @@ public struct ApartmentView: View {
                         }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button {
-                            showAddApartmentView = false
-                            // Save action here
-                            // Ends here
-                            Task {
-                                do {
-                                    try await refreshApartments()
-                                    uniId = universities.first?.id ?? 0
-                                } catch {
-                                    alertMessage = "Error: \(error.localizedDescription)"
-                                    showAlert = true
+                        if isFormValid {
+                            Button {
+                                showAddApartmentView = false
+                                // Save action here
+                                // Ends here
+                                Task {
+                                    do {
+                                        try await refreshApartments()
+                                        uniId = universities.first?.id ?? 0
+                                    } catch {
+                                        alertMessage = "Error: \(error.localizedDescription)"
+                                        showAlert = true
+                                    }
                                 }
+                            } label: {
+                                Image(systemName: "checkmark")
                             }
-                        } label: {
-                            Image(systemName: "checkmark")
+                            .buttonStyle(.glassProminent)
+                        } else {
+                            Button {
+                                
+                            } label: {
+                                Image(systemName: "checkmark")
+                            }
+                            .buttonStyle(.glassProminent)
+                            .tint(Color.gray.opacity(0.5))
+                            .disabled(true)
                         }
-                        .buttonStyle(.glassProminent)
                     }
                 }
             }
