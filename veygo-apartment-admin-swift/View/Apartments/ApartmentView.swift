@@ -112,12 +112,7 @@ public struct ApartmentView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         Task {
-                            do {
-                                try await refreshApartments()
-                            } catch {
-                                alertMessage = "Error: \(error.localizedDescription)"
-                                showAlert = true
-                            }
+                            await refreshApartments()
                         }
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
@@ -194,8 +189,8 @@ public struct ApartmentView: View {
         }
         .onAppear {
             Task {
+                await refreshApartments()
                 do {
-                    try await refreshApartments()
                     try await refreshTaxes()
                 } catch {
                     alertMessage = "Error: \(error.localizedDescription)"
@@ -417,13 +412,8 @@ public struct ApartmentView: View {
                                 }
                                 // Ends here
                                 Task {
-                                    do {
-                                        try await refreshApartments()
-                                        uniId = universities.first?.id ?? 0
-                                    } catch {
-                                        alertMessage = "Error: \(error.localizedDescription)"
-                                        showAlert = true
-                                    }
+                                    await refreshApartments()
+                                    uniId = universities.first?.id ?? 0
                                 }
                             } label: {
                                 Image(systemName: "checkmark")
@@ -449,26 +439,44 @@ public struct ApartmentView: View {
         }
     }
     
-    func refreshApartments() async throws {
+    func refreshApartments() async {
         let request = veygoCurlRequest(url: "/api/v1/apartment/get-all-apartments", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-            throw URLError(.badServerResponse)
-        }
-        
-        if httpResponse.statusCode == 200 {
-            self.token = extractToken(from: response)!
-            let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            if let apartmentsData = responseJSON?["apartments"],
-               let apartmentsJSONArray = try? JSONSerialization.data(withJSONObject: apartmentsData),
-               let decodedApartments = try? VeygoJsonStandard.shared.decoder.decode([Apartment].self, from: apartmentsJSONArray) {
-                DispatchQueue.main.async {
-                    self.apartments = decodedApartments
-                }
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                alertMessage = "Parsing HTTPURLResponse Error"
+                showAlert = true
+                return
             }
-        } else {
-            throw NSError(domain: "Server", code: httpResponse.statusCode, userInfo: nil)
+            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                showAlert = true
+                return
+            }
+            
+            if httpResponse.statusCode == 200 {
+                self.token = extractToken(from: response)!
+                let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                if let apartmentsData = responseJSON?["apartments"],
+                   let apartmentsJSONArray = try? JSONSerialization.data(withJSONObject: apartmentsData),
+                   let decodedApartments = try? VeygoJsonStandard.shared.decoder.decode([Apartment].self, from: apartmentsJSONArray) {
+                    DispatchQueue.main.async {
+                        self.apartments = decodedApartments
+                    }
+                }
+            } else {
+                showAlert = true
+                alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
+            }
+        } catch let urlError as URLError {
+            // Show: "Bad Internet Connection"
+            showAlert = true
+            alertMessage = "Bad Internet Connection: \(urlError.localizedDescription)"
+        } catch {
+            // Catch-all
+            showAlert = true
+            alertMessage = "Something went wrong: \(error.localizedDescription)"
         }
     }
     
@@ -476,8 +484,15 @@ public struct ApartmentView: View {
         let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-            throw URLError(.badServerResponse)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            alertMessage = "Parsing HTTPURLResponse Error"
+            showAlert = true
+            return
+        }
+        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+            alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+            showAlert = true
+            return
         }
         
         if httpResponse.statusCode == 200 {
@@ -491,7 +506,8 @@ public struct ApartmentView: View {
                 }
             }
         } else {
-            throw NSError(domain: "Server", code: httpResponse.statusCode, userInfo: nil)
+            showAlert = true
+            alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
         }
     }
     
@@ -542,7 +558,30 @@ public struct ApartmentView: View {
                 throw URLError(.cannotDecodeRawData)
             }
             
-            try await refreshApartments()
+            newAptName = ""
+            newAptEmail = ""
+            newAptPhone = ""
+            newAptAddress = ""
+            acceptedSchoolEmailDomain = ""
+            freeTierHours = ""
+            silverTierHours = ""
+            silverTierRate = ""
+            goldTierHours = ""
+            goldTierRate = ""
+            platinumTierHours = ""
+            platinumTierRate = ""
+            durationRate = ""
+            liabilityProtectionRate = ""
+            pcdwProtectionRate = ""
+            pcdwExtProtectionRate = ""
+            rsaProtectionRate = ""
+            paiProtectionRate = ""
+            isOperating = true
+            isPublic = true
+            aptTaxes = []
+            aptTaxSearch = ""
+            
+            await refreshApartments()
         } catch {
             alertMessage = "\(error.localizedDescription)"
             showAlert = true
