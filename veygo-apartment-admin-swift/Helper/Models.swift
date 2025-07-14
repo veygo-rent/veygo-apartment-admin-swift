@@ -92,9 +92,34 @@ struct DoNotRentList: Identifiable, Equatable, Codable {
     var exp: String?
 }
 
-
 struct Apartment: Identifiable, Equatable, Codable, HasName {
     var id: Int
+    var name: String
+    var email: String
+    var phone: String
+    var address: String
+    var acceptedSchoolEmailDomain: String
+    var freeTierHours: Double
+    var freeTierRate: Double
+    var silverTierHours: Double
+    var silverTierRate: Double
+    var goldTierHours: Double
+    var goldTierRate: Double
+    var platinumTierHours: Double
+    var platinumTierRate: Double
+    var durationRate: Double
+    var liabilityProtectionRate: Double
+    var pcdwProtectionRate: Double
+    var pcdwExtProtectionRate: Double
+    var rsaProtectionRate: Double
+    var paiProtectionRate: Double
+    var isOperating: Bool
+    var isPublic: Bool
+    var uniId: Int
+    var taxes: [Int?]
+}
+
+struct ApartmentNew: Equatable, Codable, HasName {
     var name: String
     var email: String
     var phone: String

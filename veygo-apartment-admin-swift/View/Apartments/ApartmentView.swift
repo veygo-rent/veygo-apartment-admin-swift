@@ -231,6 +231,8 @@ public struct ApartmentView: View {
                                 .onChange(of: durationRate) { oldValue, newValue in
                                     if let tempVar = Double(newValue){
                                         self.durationRateDouble = tempVar
+                                    } else if newValue == "" {
+                                        durationRateDouble = 0.0
                                     } else {
                                         durationRate = oldValue
                                     }
@@ -240,6 +242,8 @@ public struct ApartmentView: View {
                                 .onChange(of: freeTierHours) { oldValue, newValue in
                                     if let tempVar = Double(newValue){
                                         self.freeTierHoursDouble = tempVar
+                                    } else if newValue == "" {
+                                        freeTierHoursDouble = 0.0
                                     } else {
                                         freeTierHours = oldValue
                                     }
@@ -251,6 +255,8 @@ public struct ApartmentView: View {
                                 .onChange(of: silverTierHours) { oldValue, newValue in
                                     if let tempVar = Double(newValue){
                                         self.silverTierHoursDouble = tempVar
+                                    } else if newValue == "" {
+                                        silverTierHoursDouble = 0.0
                                     } else {
                                         silverTierHours = oldValue
                                     }
@@ -260,6 +266,8 @@ public struct ApartmentView: View {
                                 .onChange(of: silverTierRate) { oldValue, newValue in
                                     if let tempVar = Double(newValue){
                                         self.silverTierRateDouble = tempVar
+                                    } else if newValue == "" {
+                                        silverTierRateDouble = 0.0
                                     } else {
                                         silverTierRate = oldValue
                                     }
@@ -271,6 +279,8 @@ public struct ApartmentView: View {
                                 .onChange(of: goldTierHours) { oldValue, newValue in
                                     if let tempVar = Double(newValue){
                                         self.goldTierHoursDouble = tempVar
+                                    } else if newValue == "" {
+                                        goldTierHoursDouble = 0.0
                                     } else {
                                         goldTierHours = oldValue
                                     }
@@ -280,6 +290,8 @@ public struct ApartmentView: View {
                                 .onChange(of: goldTierRate) { oldValue, newValue in
                                     if let tempVar = Double(newValue){
                                         self.goldTierRateDouble = tempVar
+                                    } else if newValue == "" {
+                                        goldTierRateDouble = 0.0
                                     } else {
                                         goldTierRate = oldValue
                                     }
@@ -291,6 +303,8 @@ public struct ApartmentView: View {
                                 .onChange(of: platinumTierHours) { oldValue, newValue in
                                     if let tempVar = Double(newValue){
                                         self.platinumTierHoursDouble = tempVar
+                                    } else if newValue == "" {
+                                        platinumTierHoursDouble = 0.0
                                     } else {
                                         platinumTierHours = oldValue
                                     }
@@ -300,6 +314,8 @@ public struct ApartmentView: View {
                                 .onChange(of: platinumTierRate) { oldValue, newValue in
                                     if let tempVar = Double(newValue){
                                         self.platinumTierRateDouble = tempVar
+                                    } else if newValue == "" {
+                                        platinumTierRateDouble = 0.0
                                     } else {
                                         platinumTierRate = oldValue
                                     }
@@ -310,6 +326,8 @@ public struct ApartmentView: View {
                             .onChange(of: liabilityProtectionRate) { oldValue, newValue in
                                 if let tempVar = Double(newValue){
                                     self.liabilityProtectionRateDouble = tempVar
+                                } else if newValue == "" {
+                                    liabilityProtectionRateDouble = 0.0
                                 } else {
                                     liabilityProtectionRate = oldValue
                                 }
@@ -319,6 +337,8 @@ public struct ApartmentView: View {
                             .onChange(of: pcdwProtectionRate) { oldValue, newValue in
                                 if let tempVar = Double(newValue){
                                     self.pcdwProtectionRateDouble = tempVar
+                                } else if newValue == "" {
+                                    pcdwProtectionRateDouble = 0.0
                                 } else {
                                     pcdwProtectionRate = oldValue
                                 }
@@ -328,6 +348,8 @@ public struct ApartmentView: View {
                             .onChange(of: pcdwExtProtectionRate) { oldValue, newValue in
                                 if let tempVar = Double(newValue){
                                     self.pcdwExtProtectionRateDouble = tempVar
+                                } else if newValue == "" {
+                                    pcdwExtProtectionRateDouble = 0.0
                                 } else {
                                     pcdwExtProtectionRate = oldValue
                                 }
@@ -337,6 +359,8 @@ public struct ApartmentView: View {
                             .onChange(of: rsaProtectionRate) { oldValue, newValue in
                                 if let tempVar = Double(newValue){
                                     self.rsaProtectionRateDouble = tempVar
+                                } else if newValue == "" {
+                                    rsaProtectionRateDouble = 0.0
                                 } else {
                                     rsaProtectionRate = oldValue
                                 }
@@ -346,11 +370,13 @@ public struct ApartmentView: View {
                             .onChange(of: paiProtectionRate) { oldValue, newValue in
                                 if let tempVar = Double(newValue){
                                     self.paiProtectionRateDouble = tempVar
+                                } else if newValue == "" {
+                                    paiProtectionRateDouble = 0.0
                                 } else {
                                     paiProtectionRate = oldValue
                                 }
                             }
-                        ListInputField(searchText: $aptTaxSearch, listOfOptions: $taxes, selectedOptions: $aptTaxes, placeholder: "Add Taxes")
+                        ListInputField(searchText: $aptTaxSearch, listOfOptions: $taxes, selectedOptions: $aptTaxes, placeholder: "Search Taxes...")
                         VStack (alignment: .leading, spacing: 10) {
                             Text("Apartment Belongs To:")
                                 .foregroundColor(Color("TextFieldWordColor").opacity(0.65))
@@ -386,6 +412,9 @@ public struct ApartmentView: View {
                             Button {
                                 showAddApartmentView = false
                                 // Save action here
+                                Task {
+                                    await addApartment()
+                                }
                                 // Ends here
                                 Task {
                                     do {
@@ -414,6 +443,9 @@ public struct ApartmentView: View {
                 }
             }
             .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
+        }
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text("Add Apartment Failed"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
         }
     }
     
@@ -460,6 +492,61 @@ public struct ApartmentView: View {
             }
         } else {
             throw NSError(domain: "Server", code: httpResponse.statusCode, userInfo: nil)
+        }
+    }
+    
+    func addApartment() async {
+        let payload = ApartmentNew(
+            name: newAptName,
+            email: newAptEmail,
+            phone: newAptPhone,
+            address: newAptAddress,
+            acceptedSchoolEmailDomain: acceptedSchoolEmailDomain,
+            freeTierHours: freeTierHoursDouble,
+            freeTierRate: 0.00,
+            silverTierHours: silverTierHoursDouble,
+            silverTierRate: silverTierRateDouble,
+            goldTierHours: goldTierHoursDouble,
+            goldTierRate: goldTierRateDouble,
+            platinumTierHours: platinumTierHoursDouble,
+            platinumTierRate: platinumTierRateDouble,
+            durationRate: durationRateDouble,
+            liabilityProtectionRate: liabilityProtectionRateDouble,
+            pcdwProtectionRate: pcdwProtectionRateDouble,
+            pcdwExtProtectionRate: pcdwExtProtectionRateDouble,
+            rsaProtectionRate: rsaProtectionRateDouble,
+            paiProtectionRate: paiProtectionRateDouble,
+            isOperating: isOperating,
+            isPublic: isPublic,
+            uniId: uniId ?? 1,
+            taxes: aptTaxes
+        )
+        do {
+            let jsonData = try VeygoJsonStandard.shared.encoder.encode(payload)
+            // You can proceed to use jsonData as needed
+            let request = veygoCurlRequest(url: "/api/v1/apartment/add-apartment", method: "POST", headers: ["auth": "\(token)$\(userId)"], body: jsonData)
+            let (_, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse: HTTPURLResponse = response as? HTTPURLResponse else {
+                print("Parsing HTTPURLResponse Error")
+                throw URLError(.cannotConnectToHost)
+            }
+            
+            guard httpResponse.statusCode == 201 else {
+                print("Wrong Status Code: \(httpResponse.statusCode)")
+                throw URLError(.badServerResponse)
+            }
+            
+            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                print("Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")")
+                throw URLError(.cannotDecodeRawData)
+            }
+            
+            try await refreshApartments()
+        } catch {
+            alertMessage = "\(error.localizedDescription)"
+            showAlert = true
+            return
         }
     }
     
