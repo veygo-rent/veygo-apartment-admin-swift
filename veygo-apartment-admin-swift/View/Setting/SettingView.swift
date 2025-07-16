@@ -22,24 +22,24 @@ public struct SettingView: View {
                 Section() {
                     NavigationLink("About", value: Destination.about)
                 }
-                .listRowBackground(Color("TextFieldBg"))
+                .listRowBackground(Color("CardBG"))
                 
                 Section() {
                     NavigationLink("Account", value: Destination.account)
                 }
-                .listRowBackground(Color("TextFieldBg"))
+                .listRowBackground(Color("CardBG"))
                 
                 Section() {
                     NavigationLink("Verify Phone Number", value: Destination.phone)
                     NavigationLink(session.user?.emailIsValid() ?? false ? "Verify Email" : "Verify Email to Continue", value: Destination.email)
                 }
-                .listRowBackground(Color("TextFieldBg"))
+                .listRowBackground(Color("CardBG"))
                 
                 Section() {
                     NavigationLink("Legal Notice", value: Destination.legalNotice)
                     NavigationLink("License", value: Destination.license)
                 }
-                .listRowBackground(Color("TextFieldBg"))
+                .listRowBackground(Color("CardBG"))
                 
                 // Stand‑alone “Log Out” action
                 Button(role: .destructive) {
@@ -64,7 +64,7 @@ public struct SettingView: View {
                     Text("Log Out")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .listRowBackground(Color("TextFieldBg"))
+                .listRowBackground(Color("CardBG"))
             }
             .navigationDestination(for: Destination.self) { dest in
                 switch dest {

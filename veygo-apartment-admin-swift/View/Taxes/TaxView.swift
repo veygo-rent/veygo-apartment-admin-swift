@@ -77,7 +77,7 @@ struct TaxView: View {
                             .font(.largeTitle)
                             .fontWeight(.thin)
                             .padding(.vertical, 10)
-                            .listRowBackground(Color("TextFieldBg"))
+                            .listRowBackground(Color("CardBG"))
                         HStack (spacing: 0) {
                             Text("Multiplier: ")
                                 .fontWeight(.semibold)
@@ -86,7 +86,7 @@ struct TaxView: View {
                             Text("\(String(format: "%.2f", tax.multiplier * 100))%")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         HStack (spacing: 0) {
                             Text("Is effective: ")
                                 .fontWeight(.semibold)
@@ -95,11 +95,11 @@ struct TaxView: View {
                             Text("\(tax.isEffective ? "Yes" : "No")")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         PrimaryButton(text: "Make effective / Ineffective") {
                             // do something
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                     }
                     .scrollContentBackground(.hidden)
                 }

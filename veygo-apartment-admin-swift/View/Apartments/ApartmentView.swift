@@ -136,7 +136,7 @@ public struct ApartmentView: View {
                             .font(.largeTitle)
                             .fontWeight(.thin)
                             .padding(.vertical, 10)
-                            .listRowBackground(Color("TextFieldBg"))
+                            .listRowBackground(Color("CardBG"))
                         
                         HStack (spacing: 0) {
                             Text("Contact Email: ")
@@ -146,7 +146,7 @@ public struct ApartmentView: View {
                             Text("\(apt.email)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         
                         HStack (spacing: 0) {
                             Text("Contact Phone: ")
@@ -156,7 +156,7 @@ public struct ApartmentView: View {
                             Text("\(apt.phone)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         
                         HStack (spacing: 0) {
                             Text("Address: ")
@@ -166,7 +166,7 @@ public struct ApartmentView: View {
                             Text("\(apt.address)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         
                         HStack (spacing: 0) {
                             Text("Domain: ")
@@ -176,12 +176,12 @@ public struct ApartmentView: View {
                             Text("\(apt.acceptedSchoolEmailDomain)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         
                         PrimaryButton(text: "Make operating / non-operating") {
                             // do something
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                     }
                     .scrollContentBackground(.hidden)
                 }
@@ -377,7 +377,7 @@ public struct ApartmentView: View {
                                 .foregroundColor(Color("TextFieldWordColor").opacity(0.65))
                             ZStack {
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color("TextFieldBg").opacity(0.45))
+                                    .fill(Color("CardBG").opacity(0.45))
                                 Picker("Belongs To", selection: $uniId) {
                                     ForEach(universities) { uni in
                                         Text(uni.name).tag(uni.id)

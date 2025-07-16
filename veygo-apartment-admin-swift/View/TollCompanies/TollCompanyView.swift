@@ -72,7 +72,7 @@ struct TollCompanyView: View {
                             .font(.largeTitle)
                             .fontWeight(.thin)
                             .padding(.vertical, 10)
-                            .listRowBackground(Color("TextFieldBg"))
+                            .listRowBackground(Color("CardBG"))
                         HStack (spacing: 0) {
                             Text("Custom Prefix: ")
                                 .fontWeight(.semibold)
@@ -81,7 +81,7 @@ struct TollCompanyView: View {
                             Text("\(tc.customPrefixForTransactionName)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         HStack (spacing: 0) {
                             Text("Transaction Name Field: ")
                                 .fontWeight(.semibold)
@@ -90,7 +90,7 @@ struct TollCompanyView: View {
                             Text("\(tc.correspondingKeyForTransactionName)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         HStack (spacing: 0) {
                             Text("Vehicle ID Field: ")
                                 .fontWeight(.semibold)
@@ -99,7 +99,7 @@ struct TollCompanyView: View {
                             Text("\(tc.correspondingKeyForVehicleId)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         HStack (spacing: 0) {
                             Text("Transaction Time Field: ")
                                 .fontWeight(.semibold)
@@ -108,7 +108,7 @@ struct TollCompanyView: View {
                             Text("\(tc.correspondingKeyForTransactionTime)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         HStack (spacing: 0) {
                             Text("Transaction Time Format: ")
                                 .fontWeight(.semibold)
@@ -117,7 +117,7 @@ struct TollCompanyView: View {
                             Text("\(tc.timestampFormat)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         HStack (spacing: 0) {
                             Text("Transaction Timezone: ")
                                 .fontWeight(.semibold)
@@ -126,7 +126,7 @@ struct TollCompanyView: View {
                             Text("\(tc.timezone ?? "Default [UTC]")")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         HStack (spacing: 0) {
                             Text("Transaction Amount Field: ")
                                 .fontWeight(.semibold)
@@ -135,11 +135,11 @@ struct TollCompanyView: View {
                             Text("\(tc.correspondingKeyForTransactionAmount)")
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         PrimaryButton(text: "Upload Tolls") {
                             // do something
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                     }
                     .scrollContentBackground(.hidden)
                 }

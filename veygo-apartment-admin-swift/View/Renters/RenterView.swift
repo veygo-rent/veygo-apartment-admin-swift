@@ -139,18 +139,18 @@ struct RenterCardViewNew: View {
                 .font(.largeTitle)
                 .fontWeight(.thin)
                 .padding(.vertical, 10)
-                .listRowBackground(Color("TextFieldBg"))
+                .listRowBackground(Color("CardBG"))
             RenterAttributeView(renter: renter, attribute: .dob)
-                .listRowBackground(Color("TextFieldBg"))
+                .listRowBackground(Color("CardBG"))
             RenterAttributeView(renter: renter, attribute: .email)
-                .listRowBackground(Color("TextFieldBg"))
+                .listRowBackground(Color("CardBG"))
             RenterAttributeView(renter: renter, attribute: .phone)
-                .listRowBackground(Color("TextFieldBg"))
+                .listRowBackground(Color("CardBG"))
             if doNotRentRecords.count > 0 {
                 Text("Do Not Rent Record(s):")
                     .fontWeight(.semibold)
                     .foregroundColor(Color("TextBlackPrimary"))
-                    .listRowBackground(Color("TextFieldBg"))
+                    .listRowBackground(Color("CardBG"))
                 ForEach(doNotRentRecords) { record in
                     if record.isValid() {
                         HStack {
@@ -164,7 +164,7 @@ struct RenterCardViewNew: View {
                                 // Do something
                             }
                         }
-                        .listRowBackground(Color("TextFieldBg"))
+                        .listRowBackground(Color("CardBG"))
                         
                     }
                 }
@@ -191,7 +191,7 @@ struct RenterCardViewNew: View {
                     }
                 }
             }
-            .listRowBackground(Color("TextFieldBg"))
+            .listRowBackground(Color("CardBG"))
         }
         .scrollContentBackground(.hidden)
     }
