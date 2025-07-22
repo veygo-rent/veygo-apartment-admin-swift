@@ -21,6 +21,8 @@ public struct RenterView: View {
     
     @State private var doNotRentRecords: [DoNotRentList] = [DoNotRentList(id: 1, note: "Renter doing illegal activities with our vehicle. "), DoNotRentList(id: 2, note: "Renter intentionally running into a police vehicle. ")]
     
+    @State private var deleteData: Bool = false
+    
     // Computed list that respects the search query (searches name, email, and phone)
     private var filteredRenters: [PublishRenter] {
         if searchText.isEmpty { return renters }
@@ -77,6 +79,14 @@ public struct RenterView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text("Alert"), message: Text(alertMessage), dismissButton: .default(Text("OK")){
+                if deleteData {
+                    session.user = nil
+                    APIQueueManager.shared.setAuth(userId: 0, token: "")
+                }
+            })
+        }
     }
     
     func refreshRenters() async {
@@ -86,16 +96,28 @@ public struct RenterView: View {
                 Task {
                     do {
                         let (data, response) = try await URLSession.shared.data(for: request)
-                        guard let httpResponse = response as? HTTPURLResponse, httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                        guard let httpResponse = response as? HTTPURLResponse else {
                             await MainActor.run {
-                                alertMessage = "Invalid server response."
+                                alertMessage = "Parsing HTTPURLResponse Error"
                                 showAlert = true
+                                deleteData = true
                             }
                             completion(nil)
                             continuation.resume()
                             return
                         }
-                        if httpResponse.statusCode == 200 {
+                        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                            await MainActor.run {
+                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                                showAlert = true
+                                deleteData = true
+                            }
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        switch httpResponse.statusCode {
+                        case 200:
                             let newToken = extractToken(from: response) ?? ""
                             let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                             if let renterData = responseJSON?["renters"],
@@ -106,26 +128,29 @@ public struct RenterView: View {
                                 }
                             }
                             completion(newToken)
-                        } else if httpResponse.statusCode == 401 {
+                            continuation.resume()
+                        case 401:
                             await MainActor.run {
-                                session.user = nil
-                                APIQueueManager.shared.setAuth(userId: 0, token: "")
                                 alertMessage = "Session expired. Please log in again."
                                 showAlert = true
+                                deleteData = true
                             }
                             completion(nil)
-                        } else {
+                            continuation.resume()
+                        default:
                             await MainActor.run {
                                 alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
                                 showAlert = true
+                                deleteData = true
                             }
                             completion(nil)
+                            continuation.resume()
                         }
-                        continuation.resume()
                     } catch {
                         await MainActor.run {
                             alertMessage = "Network error: \(error.localizedDescription)"
                             showAlert = true
+                            deleteData = true
                         }
                         completion(nil)
                         continuation.resume()
@@ -269,3 +294,4 @@ struct RenterAttributeView: View {
         }.font(.title3)
     }
 }
+

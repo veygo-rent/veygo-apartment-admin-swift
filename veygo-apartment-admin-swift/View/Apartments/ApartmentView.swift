@@ -13,8 +13,6 @@ public struct ApartmentView: View {
     @State private var alertMessage: String = ""
     
     @EnvironmentObject private var session: AdminSession
-    @AppStorage("token") private var token: String = ""
-    @AppStorage("user_id") private var userId: Int = 0
     
     @Binding var apartments: [Apartment]
     @Binding var taxes: [Tax]
@@ -61,6 +59,8 @@ public struct ApartmentView: View {
     @State private var pcdwExtProtectionRateDouble: Double = 0
     @State private var rsaProtectionRateDouble: Double = 0
     @State private var paiProtectionRateDouble: Double = 0
+    
+    @State private var deleteData: Bool = false
     
     private var isFormValid: Bool {
         
@@ -190,19 +190,11 @@ public struct ApartmentView: View {
         .onAppear {
             Task {
                 await refreshApartments()
-                do {
-                    try await refreshTaxes()
-                } catch {
-                    alertMessage = "Error: \(error.localizedDescription)"
-                    showAlert = true
-                }
+                await refreshTaxes()
             }
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
-        .alert(isPresented: $showAlert) {
-            Alert(title: Text("Error"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
-        }
         .sheet(isPresented: $showAddApartmentView) {
             NavigationStack {
                 ScrollView {
@@ -409,10 +401,6 @@ public struct ApartmentView: View {
                                 // Save action here
                                 Task {
                                     await addApartment()
-                                }
-                                // Ends here
-                                Task {
-                                    await refreshApartments()
                                     uniId = universities.first?.id ?? 0
                                 }
                             } label: {
@@ -435,7 +423,12 @@ public struct ApartmentView: View {
             .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
         }
         .alert(isPresented: $showAlert) {
-            Alert(title: Text("Add Apartment Failed"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+            Alert(title: Text("Alert"), message: Text(alertMessage), dismissButton: .default(Text("OK")){
+                if deleteData {
+                    session.user = nil
+                    APIQueueManager.shared.setAuth(userId: 0, token: "")
+                }
+            })
         }
     }
     
@@ -447,47 +440,64 @@ public struct ApartmentView: View {
                     do {
                         let (data, response) = try await URLSession.shared.data(for: request)
                         guard let httpResponse = response as? HTTPURLResponse else {
-                            alertMessage = "Parsing HTTPURLResponse Error"
-                            showAlert = true
+                            await MainActor.run {
+                                alertMessage = "Parsing HTTPURLResponse Error"
+                                showAlert = true
+                                deleteData = true
+                            }
                             completion(nil)
                             continuation.resume()
                             return
                         }
                         guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                            alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-                            showAlert = true
+                            await MainActor.run {
+                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                                showAlert = true
+                                deleteData = true
+                            }
                             completion(nil)
                             continuation.resume()
                             return
                         }
-                        if httpResponse.statusCode == 200 {
+                        switch httpResponse.statusCode {
+                        case 200:
                             let newToken = extractToken(from: response) ?? ""
                             let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                             if let apartmentsData = responseJSON?["apartments"],
                                let apartmentsJSONArray = try? JSONSerialization.data(withJSONObject: apartmentsData),
                                let decodedApartments = try? VeygoJsonStandard.shared.decoder.decode([Apartment].self, from: apartmentsJSONArray) {
-                                DispatchQueue.main.async {
+                                await MainActor.run {
+                                    deleteData = false
                                     self.apartments = decodedApartments
+                                    alertMessage = "Apartment added successfully"
+                                    showAlert = true
                                 }
                             }
                             completion(newToken)
-                        } else if httpResponse.statusCode == 401 {
+                            continuation.resume()
+                        case 401:
                             await MainActor.run {
-                                session.user = nil
-                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                                deleteData = true
                                 alertMessage = "Session expired. Please log in again."
                                 showAlert = true
                             }
                             completion(nil)
-                        } else {
-                            showAlert = true
-                            alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
+                            continuation.resume()
+                        default:
+                            await MainActor.run {
+                                deleteData = true
+                                showAlert = true
+                                alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
+                            }
                             completion(nil)
+                            continuation.resume()
                         }
-                        continuation.resume()
                     } catch {
-                        showAlert = true
-                        alertMessage = "Something went wrong: \(error.localizedDescription)"
+                        await MainActor.run {
+                            deleteData = true
+                            showAlert = true
+                            alertMessage = "Something went wrong: \(error.localizedDescription)"
+                        }
                         completion(nil)
                         continuation.resume()
                     }
@@ -504,47 +514,62 @@ public struct ApartmentView: View {
                     do {
                         let (data, response) = try await URLSession.shared.data(for: request)
                         guard let httpResponse = response as? HTTPURLResponse else {
-                            alertMessage = "Parsing HTTPURLResponse Error"
-                            showAlert = true
+                            await MainActor.run {
+                                deleteData = true
+                                alertMessage = "Parsing HTTPURLResponse Error"
+                                showAlert = true
+                            }
                             completion(nil)
                             continuation.resume()
                             return
                         }
                         guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                            alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-                            showAlert = true
+                            await MainActor.run {
+                                deleteData = true
+                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                                showAlert = true
+                            }
                             completion(nil)
                             continuation.resume()
                             return
                         }
-                        if httpResponse.statusCode == 200 {
+                        switch httpResponse.statusCode {
+                        case 200:
                             let newToken = extractToken(from: response) ?? ""
                             let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                             if let taxesData = responseJSON?["taxes"],
                                let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
                                let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
-                                DispatchQueue.main.async {
+                                await MainActor.run {
                                     self.taxes = decodedTaxes
+                                    deleteData = false
                                 }
                             }
                             completion(newToken)
-                        } else if httpResponse.statusCode == 401 {
+                            continuation.resume()
+                        case 401:
                             await MainActor.run {
-                                session.user = nil
-                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                                deleteData = true
                                 alertMessage = "Session expired. Please log in again."
                                 showAlert = true
                             }
                             completion(nil)
-                        } else {
-                            showAlert = true
-                            alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
+                            continuation.resume()
+                        default:
+                            await MainActor.run {
+                                deleteData = true
+                                showAlert = true
+                                alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
+                            }
                             completion(nil)
+                            continuation.resume()
                         }
-                        continuation.resume()
                     } catch {
-                        showAlert = true
-                        alertMessage = "Something went wrong: \(error.localizedDescription)"
+                        await MainActor.run {
+                            deleteData = true
+                            showAlert = true
+                            alertMessage = "Something went wrong: \(error.localizedDescription)"
+                        }
                         completion(nil)
                         continuation.resume()
                     }
@@ -588,65 +613,87 @@ public struct ApartmentView: View {
                         do {
                             let (_, response) = try await URLSession.shared.data(for: request)
                             guard let httpResponse: HTTPURLResponse = response as? HTTPURLResponse else {
-                                alertMessage = "Parsing HTTPURLResponse Error"
-                                showAlert = true
-                                completion(nil)
-                                continuation.resume()
-                                return
-                            }
-                            if httpResponse.statusCode == 401 {
                                 await MainActor.run {
-                                    session.user = nil
-                                    APIQueueManager.shared.setAuth(userId: 0, token: "")
-                                    alertMessage = "Session expired. Please log in again."
+                                    deleteData = true
+                                    alertMessage = "Parsing HTTPURLResponse Error"
                                     showAlert = true
                                 }
                                 completion(nil)
                                 continuation.resume()
                                 return
                             }
-                            guard httpResponse.statusCode == 201 else {
-                                alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
-                                showAlert = true
-                                completion(nil)
-                                continuation.resume()
-                                return
-                            }
                             guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-                                showAlert = true
+                                await MainActor.run {
+                                    deleteData = true
+                                    alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                                    showAlert = true
+                                }
                                 completion(nil)
                                 continuation.resume()
                                 return
                             }
-                            newAptName = ""
-                            newAptEmail = ""
-                            newAptPhone = ""
-                            newAptAddress = ""
-                            acceptedSchoolEmailDomain = ""
-                            freeTierHours = ""
-                            silverTierHours = ""
-                            silverTierRate = ""
-                            goldTierHours = ""
-                            goldTierRate = ""
-                            platinumTierHours = ""
-                            platinumTierRate = ""
-                            durationRate = ""
-                            liabilityProtectionRate = ""
-                            pcdwProtectionRate = ""
-                            pcdwExtProtectionRate = ""
-                            rsaProtectionRate = ""
-                            paiProtectionRate = ""
-                            isOperating = true
-                            isPublic = true
-                            aptTaxes = []
-                            aptTaxSearch = ""
-                            await refreshApartments()
-                            completion(nil)
-                            continuation.resume()
+                            switch httpResponse.statusCode {
+                            case 201:
+                                let newToken = extractToken(from: response) ?? ""
+                                await MainActor.run {
+                                    deleteData = false
+                                    newAptName = ""
+                                    newAptEmail = ""
+                                    newAptPhone = ""
+                                    newAptAddress = ""
+                                    acceptedSchoolEmailDomain = ""
+                                    freeTierHours = ""
+                                    silverTierHours = ""
+                                    silverTierRate = ""
+                                    goldTierHours = ""
+                                    goldTierRate = ""
+                                    platinumTierHours = ""
+                                    platinumTierRate = ""
+                                    durationRate = ""
+                                    liabilityProtectionRate = ""
+                                    pcdwProtectionRate = ""
+                                    pcdwExtProtectionRate = ""
+                                    rsaProtectionRate = ""
+                                    paiProtectionRate = ""
+                                    isOperating = true
+                                    isPublic = true
+                                    aptTaxes = []
+                                    aptTaxSearch = ""
+                                }
+                                await refreshApartments()
+                                completion(newToken)
+                                continuation.resume()
+                            case 401:
+                                await MainActor.run {
+                                    deleteData = true
+                                    alertMessage = "Session expired. Please log in again."
+                                    showAlert = true
+                                }
+                                completion(nil)
+                                continuation.resume()
+                            case 406:
+                                let newToken = extractToken(from: response) ?? ""
+                                await MainActor.run {
+                                    alertMessage = "Apartment exists"
+                                    showAlert = true
+                                }
+                                completion(newToken)
+                                continuation.resume()
+                            default:
+                                await MainActor.run {
+                                    deleteData = true
+                                    alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
+                                    showAlert = true
+                                }
+                                completion(nil)
+                                continuation.resume()
+                            }
                         } catch {
-                            alertMessage = "Something went wrong: \(error.localizedDescription)"
-                            showAlert = true
+                            await MainActor.run {
+                                deleteData = true
+                                alertMessage = "Something went wrong: \(error.localizedDescription)"
+                                showAlert = true
+                            }
                             completion(nil)
                             continuation.resume()
                         }
@@ -654,10 +701,14 @@ public struct ApartmentView: View {
                 }
             }
         } catch {
-            alertMessage = "Something went wrong: \(error.localizedDescription)"
-            showAlert = true
+            await MainActor.run {
+                deleteData = true
+                alertMessage = "Something went wrong: \(error.localizedDescription)"
+                showAlert = true
+            }
             return
         }
     }
     
 }
+

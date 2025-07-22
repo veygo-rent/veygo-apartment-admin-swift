@@ -46,6 +46,9 @@ class APIQueueManager {
             self.queue.async {
                 if let newToken = newToken, !newToken.isEmpty, newToken != self.token {
                     self.token = newToken
+                } else {
+                    self.token = ""
+                    self.userId = 0
                 }
                 self.isRequesting = false
                 self.processNext()

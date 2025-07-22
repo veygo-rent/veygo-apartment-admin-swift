@@ -26,6 +26,8 @@ struct TollCompanyView: View {
     @State private var newTaxName: String = ""
     @State private var newTaxRate: String = ""
     
+    @State private var deleteData: Bool = false
+    
     private var filteredTollCompanies: [TransponderCompany] {
         if searchText.isEmpty { return tollCompanies }
         return tollCompanies.filter {
@@ -153,7 +155,12 @@ struct TollCompanyView: View {
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
         .alert(isPresented: $showAlert) {
-            Alert(title: Text("Error"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+            Alert(title: Text("Alert"), message: Text(alertMessage), dismissButton: .default(Text("OK")){
+                if deleteData {
+                    session.user = nil
+                    APIQueueManager.shared.setAuth(userId: 0, token: "")
+                }
+            })
         }
         .sheet(isPresented: $showAddTollCompanyView) {
             NavigationStack {
@@ -200,8 +207,10 @@ struct TollCompanyView: View {
                 Task {
                     do {
                         let (data, response) = try await URLSession.shared.data(for: request)
+                        
                         guard let httpResponse = response as? HTTPURLResponse else {
                             await MainActor.run {
+                                deleteData = true
                                 alertMessage = "Invalid server response."
                                 showAlert = true
                             }
@@ -210,40 +219,49 @@ struct TollCompanyView: View {
                             return
                         }
                         guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                            print("Unexpected Content-Type")
+                            await MainActor.run {
+                                deleteData = true
+                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                                showAlert = true
+                            }
                             completion(nil)
                             continuation.resume()
                             return
                         }
-                        if httpResponse.statusCode == 200 {
+                        switch httpResponse.statusCode {
+                        case 200:
                             let newToken = extractToken(from: response) ?? ""
                             let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                             if let tcsData = responseJSON?["transponder_companies"],
                                let tcsJSONArray = try? JSONSerialization.data(withJSONObject: tcsData),
                                let decodedTCs = try? VeygoJsonStandard.shared.decoder.decode([TransponderCompany].self, from: tcsJSONArray) {
                                 await MainActor.run {
+                                    deleteData = false
                                     tollCompanies = decodedTCs
                                 }
                             }
                             completion(newToken)
-                        } else if httpResponse.statusCode == 401 {
+                            continuation.resume()
+                        case 401:
                             await MainActor.run {
-                                session.user = nil
-                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                                deleteData = false
                                 alertMessage = "Session expired. Please log in again."
                                 showAlert = true
                             }
                             completion(nil)
-                        } else {
+                            continuation.resume()
+                        default:
                             await MainActor.run {
+                                deleteData = false
                                 alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
                                 showAlert = true
                             }
                             completion(nil)
+                            continuation.resume()
                         }
-                        continuation.resume()
                     } catch {
                         await MainActor.run {
+                            deleteData = false
                             alertMessage = "Network error: \(error.localizedDescription)"
                             showAlert = true
                         }
@@ -255,3 +273,4 @@ struct TollCompanyView: View {
         }
     }
 }
+

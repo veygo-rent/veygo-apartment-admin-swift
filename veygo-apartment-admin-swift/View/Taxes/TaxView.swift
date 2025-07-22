@@ -26,6 +26,8 @@ struct TaxView: View {
     @State private var newTaxName: String = ""
     @State private var newTaxRate: String = ""
     
+    @State private var deleteData: Bool = false
+    
     private var filteredTaxes: [Tax] {
         if searchText.isEmpty { return taxes }
         return taxes.filter {
@@ -48,7 +50,7 @@ struct TaxView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         Task {
-                            try await refreshTaxes()
+                            await refreshTaxes()
                         }
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
@@ -102,13 +104,18 @@ struct TaxView: View {
         }
         .onAppear {
             Task {
-                try await refreshTaxes()
+                await refreshTaxes()
             }
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
         .alert(isPresented: $showAlert) {
-            Alert(title: Text("Error"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+            Alert(title: Text("Alert"), message: Text(alertMessage), dismissButton: .default(Text("OK")){
+                if deleteData {
+                    session.user = nil
+                    APIQueueManager.shared.setAuth(userId: 0, token: "")
+                }
+            })
         }
         .sheet(isPresented: $showAddTaxView) {
             NavigationStack {
@@ -135,7 +142,7 @@ struct TaxView: View {
                             // Save action here
                             // Ends here
                             Task {
-                                try await refreshTaxes()
+                                await refreshTaxes()
                             }
                         } label: {
                             Image(systemName: "checkmark")
@@ -157,7 +164,8 @@ struct TaxView: View {
                         let (data, response) = try await URLSession.shared.data(for: request)
                         guard let httpResponse = response as? HTTPURLResponse else {
                             await MainActor.run {
-                                alertMessage = "Invalid server response."
+                                deleteData = true
+                                alertMessage = "Parsing HTTPURLResponse Error"
                                 showAlert = true
                             }
                             completion(nil)
@@ -165,42 +173,51 @@ struct TaxView: View {
                             return
                         }
                         guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                            print("Unexpected Content-Type")
+                            await MainActor.run {
+                                deleteData = true
+                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                                showAlert = true
+                            }
                             completion(nil)
                             continuation.resume()
                             return
                         }
-                        if httpResponse.statusCode == 200 {
+                        switch httpResponse.statusCode {
+                        case 200:
                             let newToken = extractToken(from: response) ?? ""
                             let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                             if let taxesData = responseJSON?["taxes"],
                                let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
                                let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
                                 await MainActor.run {
+                                    deleteData = false
                                     self.taxes = decodedTaxes
                                 }
                             }
                             completion(newToken)
-                        } else if httpResponse.statusCode == 401 {
+                            continuation.resume()
+                        case 401:
                             await MainActor.run {
-                                session.user = nil
-                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                                deleteData = true
                                 alertMessage = "Session expired. Please log in again."
                                 showAlert = true
                             }
                             completion(nil)
-                        } else {
+                            continuation.resume()
+                        default:
                             await MainActor.run {
-                                alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                                deleteData = true
                                 showAlert = true
+                                alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
                             }
                             completion(nil)
+                            continuation.resume()
                         }
-                        continuation.resume()
                     } catch {
                         await MainActor.run {
-                            alertMessage = "Network error: \(error.localizedDescription)"
+                            deleteData = true
                             showAlert = true
+                            alertMessage = "Something went wrong: \(error.localizedDescription)"
                         }
                         completion(nil)
                         continuation.resume()

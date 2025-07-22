@@ -95,9 +95,8 @@ struct LoginView: View {
                 Task {
                     do {
                         let (data, response) = try await URLSession.shared.data(for: request)
-                        guard let httpResponse = response as? HTTPURLResponse,
-                              httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                            DispatchQueue.main.async {
+                        guard let httpResponse = response as? HTTPURLResponse else {
+                            await MainActor.run {
                                 alertMessage = "Invalid server response."
                                 showAlert = true
                             }
@@ -105,36 +104,48 @@ struct LoginView: View {
                             continuation.resume()
                             return
                         }
-                        if httpResponse.statusCode == 200 {
+                        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                            await MainActor.run {
+                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                                showAlert = true
+                            }
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        switch httpResponse.statusCode {
+                        case 200:
                             let newToken = extractToken(from: response) ?? ""
                             let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                             if let renterData = responseJSON?["admin"],
                                let renterJSON = try? JSONSerialization.data(withJSONObject: renterData) {
                                 if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
                                     APIQueueManager.shared.setAuth(userId: decodedUser.id, token: newToken)
-                                    DispatchQueue.main.async {
+                                    await MainActor.run {
                                         print("\nLogin successful: \(newToken) \(decodedUser.id)\n")
                                         self.session.user = decodedUser
                                     }
                                 }
                             }
                             completion(newToken)
-                        } else if httpResponse.statusCode == 401 {
-                            DispatchQueue.main.async {
+                            continuation.resume()
+                        case 401:
+                            await MainActor.run {
                                 alertMessage = "Email or password is incorrect"
                                 showAlert = true
                             }
                             completion(nil)
-                        } else {
-                            DispatchQueue.main.async {
+                            continuation.resume()
+                        default:
+                            await MainActor.run {
                                 alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
                                 showAlert = true
                             }
                             completion(nil)
+                            continuation.resume()
                         }
-                        continuation.resume()
                     } catch {
-                        DispatchQueue.main.async {
+                        await MainActor.run {
                             alertMessage = "Network error: \(error.localizedDescription)"
                             showAlert = true
                         }
