@@ -194,48 +194,63 @@ struct TollCompanyView: View {
     }
     
     func refreshTollCompanies() async {
-        let request = veygoCurlRequest(url: "/api/v1/toll/get-company", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                await MainActor.run {
-                    alertMessage = "Invalid server response."
-                    showAlert = true
-                }
-                return
-            }
-            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                print("Unexpected Content-Type")
-                throw URLError(.cannotParseResponse)
-            }
-
-            if httpResponse.statusCode == 200 {
-                self.token = extractToken(from: response)!
-                let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let tcsData = responseJSON?["transponder_companies"],
-                   let tcsJSONArray = try? JSONSerialization.data(withJSONObject: tcsData),
-                   let decodedTCs = try? VeygoJsonStandard.shared.decoder.decode([TransponderCompany].self, from: tcsJSONArray) {
-                    await MainActor.run {
-                        tollCompanies = decodedTCs
+        await withCheckedContinuation { continuation in
+            APIQueueManager.shared.enqueueAPICall { token, userId, completion in
+                let request = veygoCurlRequest(url: "/api/v1/toll/get-company", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                Task {
+                    do {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        guard let httpResponse = response as? HTTPURLResponse else {
+                            await MainActor.run {
+                                alertMessage = "Invalid server response."
+                                showAlert = true
+                            }
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                            print("Unexpected Content-Type")
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        if httpResponse.statusCode == 200 {
+                            let newToken = extractToken(from: response) ?? ""
+                            let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                            if let tcsData = responseJSON?["transponder_companies"],
+                               let tcsJSONArray = try? JSONSerialization.data(withJSONObject: tcsData),
+                               let decodedTCs = try? VeygoJsonStandard.shared.decoder.decode([TransponderCompany].self, from: tcsJSONArray) {
+                                await MainActor.run {
+                                    tollCompanies = decodedTCs
+                                }
+                            }
+                            completion(newToken)
+                        } else if httpResponse.statusCode == 401 {
+                            await MainActor.run {
+                                session.user = nil
+                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                                alertMessage = "Session expired. Please log in again."
+                                showAlert = true
+                            }
+                            completion(nil)
+                        } else {
+                            await MainActor.run {
+                                alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                                showAlert = true
+                            }
+                            completion(nil)
+                        }
+                        continuation.resume()
+                    } catch {
+                        await MainActor.run {
+                            alertMessage = "Network error: \(error.localizedDescription)"
+                            showAlert = true
+                        }
+                        completion(nil)
+                        continuation.resume()
                     }
                 }
-            } else if httpResponse.statusCode == 401 {
-                await MainActor.run {
-                    alertMessage = "Reverify login status failed"
-                    showAlert = true
-                }
-            } else {
-                await MainActor.run {
-                    alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                    showAlert = true
-                }
-            }
-        } catch {
-            await MainActor.run {
-                alertMessage = "Network error: \(error.localizedDescription)"
-                showAlert = true
             }
         }
     }

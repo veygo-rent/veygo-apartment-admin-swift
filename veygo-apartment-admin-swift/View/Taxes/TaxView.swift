@@ -48,12 +48,7 @@ struct TaxView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         Task {
-                            do {
-                                try await refreshTaxes()
-                            } catch {
-                                alertMessage = "Error: \(error.localizedDescription)"
-                                showAlert = true
-                            }
+                            try await refreshTaxes()
                         }
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
@@ -107,12 +102,7 @@ struct TaxView: View {
         }
         .onAppear {
             Task {
-                do {
-                    try await refreshTaxes()
-                } catch {
-                    alertMessage = "Error: \(error.localizedDescription)"
-                    showAlert = true
-                }
+                try await refreshTaxes()
             }
         }
         .scrollContentBackground(.hidden)
@@ -145,12 +135,7 @@ struct TaxView: View {
                             // Save action here
                             // Ends here
                             Task {
-                                do {
-                                    try await refreshTaxes()
-                                } catch {
-                                    alertMessage = "Error: \(error.localizedDescription)"
-                                    showAlert = true
-                                }
+                                try await refreshTaxes()
                             }
                         } label: {
                             Image(systemName: "checkmark")
@@ -163,30 +148,65 @@ struct TaxView: View {
         }
     }
     
-    func refreshTaxes() async throws {
-        let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw URLError(.badServerResponse)
-        }
-        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-            print("Unexpected Content-Type")
-            throw URLError(.cannotParseResponse)
-        }
-        
-        if httpResponse.statusCode == 200 {
-            self.token = extractToken(from: response)!
-            let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            if let taxesData = responseJSON?["taxes"],
-               let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
-               let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
-                DispatchQueue.main.async {
-                    self.taxes = decodedTaxes
+    func refreshTaxes() async {
+        await withCheckedContinuation { continuation in
+            APIQueueManager.shared.enqueueAPICall { token, userId, completion in
+                let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                Task {
+                    do {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        guard let httpResponse = response as? HTTPURLResponse else {
+                            await MainActor.run {
+                                alertMessage = "Invalid server response."
+                                showAlert = true
+                            }
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                            print("Unexpected Content-Type")
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        if httpResponse.statusCode == 200 {
+                            let newToken = extractToken(from: response) ?? ""
+                            let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                            if let taxesData = responseJSON?["taxes"],
+                               let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
+                               let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
+                                await MainActor.run {
+                                    self.taxes = decodedTaxes
+                                }
+                            }
+                            completion(newToken)
+                        } else if httpResponse.statusCode == 401 {
+                            await MainActor.run {
+                                session.user = nil
+                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                                alertMessage = "Session expired. Please log in again."
+                                showAlert = true
+                            }
+                            completion(nil)
+                        } else {
+                            await MainActor.run {
+                                alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                                showAlert = true
+                            }
+                            completion(nil)
+                        }
+                        continuation.resume()
+                    } catch {
+                        await MainActor.run {
+                            alertMessage = "Network error: \(error.localizedDescription)"
+                            showAlert = true
+                        }
+                        completion(nil)
+                        continuation.resume()
+                    }
                 }
             }
-        } else {
-            throw NSError(domain: "Server", code: httpResponse.statusCode, userInfo: nil)
         }
     }
 }

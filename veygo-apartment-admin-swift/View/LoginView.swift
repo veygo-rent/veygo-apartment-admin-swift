@@ -60,7 +60,7 @@ struct LoginView: View {
                         alertMessage = "Please enter your password"
                         showAlert = true
                     } else {
-                        loginUser()
+                        Task { await loginUser() }
                     }
                 }
                 .alert(isPresented: $showAlert) {
@@ -85,56 +85,65 @@ struct LoginView: View {
         .background(Color("MainBG").ignoresSafeArea(.all))
     }
 
-    func loginUser() {
+    func loginUser() async {
         let body: [String: String] = ["email": email, "password": password]
         let jsonData = try? JSONSerialization.data(withJSONObject: body)
         
-        let request = veygoCurlRequest(url: "/api/v1/admin/login", method: "POST", body: jsonData)
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                DispatchQueue.main.async {
-                    alertMessage = "Network error: \(error.localizedDescription)"
-                    showAlert = true
-                }
-                return
-            }
-
-            guard let httpResponse = response as? HTTPURLResponse, let data = data,
-            httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                DispatchQueue.main.async {
-                    alertMessage = "Invalid server response."
-                    showAlert = true
-                }
-                return
-            }
-
-            if httpResponse.statusCode == 200 {
-                // Update AppStorage
-                self.token = extractToken(from: response)!
-                let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let renterData = responseJSON?["admin"],
-                   let renterJSON = try? JSONSerialization.data(withJSONObject: renterData) {
-                    DispatchQueue.main.async {
-                        if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
-                            self.userId = decodedUser.id
-                            print("\nLogin successful: \(self.token) \(decodedUser.id)\n")
-                            self.session.user = decodedUser
+        await withCheckedContinuation { continuation in
+            APIQueueManager.shared.enqueueAPICall { token, userId, completion in
+                let request = veygoCurlRequest(url: "/api/v1/admin/login", method: "POST", body: jsonData)
+                Task {
+                    do {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        guard let httpResponse = response as? HTTPURLResponse,
+                              httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                            DispatchQueue.main.async {
+                                alertMessage = "Invalid server response."
+                                showAlert = true
+                            }
+                            completion(nil)
+                            continuation.resume()
+                            return
                         }
+                        if httpResponse.statusCode == 200 {
+                            let newToken = extractToken(from: response) ?? ""
+                            let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                            if let renterData = responseJSON?["admin"],
+                               let renterJSON = try? JSONSerialization.data(withJSONObject: renterData) {
+                                if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
+                                    APIQueueManager.shared.setAuth(userId: decodedUser.id, token: newToken)
+                                    DispatchQueue.main.async {
+                                        print("\nLogin successful: \(newToken) \(decodedUser.id)\n")
+                                        self.session.user = decodedUser
+                                    }
+                                }
+                            }
+                            completion(newToken)
+                        } else if httpResponse.statusCode == 401 {
+                            DispatchQueue.main.async {
+                                alertMessage = "Email or password is incorrect"
+                                showAlert = true
+                            }
+                            completion(nil)
+                        } else {
+                            DispatchQueue.main.async {
+                                alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                                showAlert = true
+                            }
+                            completion(nil)
+                        }
+                        continuation.resume()
+                    } catch {
+                        DispatchQueue.main.async {
+                            alertMessage = "Network error: \(error.localizedDescription)"
+                            showAlert = true
+                        }
+                        completion(nil)
+                        continuation.resume()
                     }
                 }
-            } else if httpResponse.statusCode == 401 {
-                DispatchQueue.main.async {
-                    alertMessage = "Email or password is incorrect"
-                    showAlert = true
-                }
-            } else {
-                DispatchQueue.main.async {
-                    alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                    showAlert = true
-                }
             }
-        }.resume()
+        }
     }
 
 }

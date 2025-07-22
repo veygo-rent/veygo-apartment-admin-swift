@@ -80,43 +80,57 @@ public struct RenterView: View {
     }
     
     func refreshRenters() async {
-        let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                await MainActor.run {
-                    alertMessage = "Invalid server response."
-                    showAlert = true
-                }
-                return
-            }
-
-            if httpResponse.statusCode == 200 {
-                self.token = extractToken(from: response)!
-                let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let renterData = responseJSON?["renters"],
-                   let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
-                   let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
-                    await MainActor.run {
-                        renters = decodedUser
+        await withCheckedContinuation { continuation in
+            APIQueueManager.shared.enqueueAPICall { token, userId, completion in
+                let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                Task {
+                    do {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        guard let httpResponse = response as? HTTPURLResponse, httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                            await MainActor.run {
+                                alertMessage = "Invalid server response."
+                                showAlert = true
+                            }
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        if httpResponse.statusCode == 200 {
+                            let newToken = extractToken(from: response) ?? ""
+                            let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                            if let renterData = responseJSON?["renters"],
+                               let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
+                               let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
+                                await MainActor.run {
+                                    renters = decodedUser
+                                }
+                            }
+                            completion(newToken)
+                        } else if httpResponse.statusCode == 401 {
+                            await MainActor.run {
+                                session.user = nil
+                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                                alertMessage = "Session expired. Please log in again."
+                                showAlert = true
+                            }
+                            completion(nil)
+                        } else {
+                            await MainActor.run {
+                                alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                                showAlert = true
+                            }
+                            completion(nil)
+                        }
+                        continuation.resume()
+                    } catch {
+                        await MainActor.run {
+                            alertMessage = "Network error: \(error.localizedDescription)"
+                            showAlert = true
+                        }
+                        completion(nil)
+                        continuation.resume()
                     }
                 }
-            } else if httpResponse.statusCode == 401 {
-                await MainActor.run {
-                    alertMessage = "Reverify login status failed"
-                    showAlert = true
-                }
-            } else {
-                await MainActor.run {
-                    alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                    showAlert = true
-                }
-            }
-        } catch {
-            await MainActor.run {
-                alertMessage = "Network error: \(error.localizedDescription)"
-                showAlert = true
             }
         }
     }

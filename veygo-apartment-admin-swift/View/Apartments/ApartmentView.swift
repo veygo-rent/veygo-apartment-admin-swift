@@ -440,74 +440,116 @@ public struct ApartmentView: View {
     }
     
     func refreshApartments() async {
-        let request = veygoCurlRequest(url: "/api/v1/apartment/get-all-apartments", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                alertMessage = "Parsing HTTPURLResponse Error"
-                showAlert = true
-                return
-            }
-            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-                showAlert = true
-                return
-            }
-            
-            if httpResponse.statusCode == 200 {
-                self.token = extractToken(from: response)!
-                let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let apartmentsData = responseJSON?["apartments"],
-                   let apartmentsJSONArray = try? JSONSerialization.data(withJSONObject: apartmentsData),
-                   let decodedApartments = try? VeygoJsonStandard.shared.decoder.decode([Apartment].self, from: apartmentsJSONArray) {
-                    DispatchQueue.main.async {
-                        self.apartments = decodedApartments
+        await withCheckedContinuation { continuation in
+            APIQueueManager.shared.enqueueAPICall { token, userId, completion in
+                let request = veygoCurlRequest(url: "/api/v1/apartment/get-all-apartments", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                Task {
+                    do {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        guard let httpResponse = response as? HTTPURLResponse else {
+                            alertMessage = "Parsing HTTPURLResponse Error"
+                            showAlert = true
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                            alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                            showAlert = true
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        if httpResponse.statusCode == 200 {
+                            let newToken = extractToken(from: response) ?? ""
+                            let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                            if let apartmentsData = responseJSON?["apartments"],
+                               let apartmentsJSONArray = try? JSONSerialization.data(withJSONObject: apartmentsData),
+                               let decodedApartments = try? VeygoJsonStandard.shared.decoder.decode([Apartment].self, from: apartmentsJSONArray) {
+                                DispatchQueue.main.async {
+                                    self.apartments = decodedApartments
+                                }
+                            }
+                            completion(newToken)
+                        } else if httpResponse.statusCode == 401 {
+                            await MainActor.run {
+                                session.user = nil
+                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                                alertMessage = "Session expired. Please log in again."
+                                showAlert = true
+                            }
+                            completion(nil)
+                        } else {
+                            showAlert = true
+                            alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
+                            completion(nil)
+                        }
+                        continuation.resume()
+                    } catch {
+                        showAlert = true
+                        alertMessage = "Something went wrong: \(error.localizedDescription)"
+                        completion(nil)
+                        continuation.resume()
                     }
                 }
-            } else {
-                showAlert = true
-                alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
             }
-        } catch let urlError as URLError {
-            // Show: "Bad Internet Connection"
-            showAlert = true
-            alertMessage = "Bad Internet Connection: \(urlError.localizedDescription)"
-        } catch {
-            // Catch-all
-            showAlert = true
-            alertMessage = "Something went wrong: \(error.localizedDescription)"
         }
     }
     
-    func refreshTaxes() async throws {
-        let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            alertMessage = "Parsing HTTPURLResponse Error"
-            showAlert = true
-            return
-        }
-        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-            alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-            showAlert = true
-            return
-        }
-        
-        if httpResponse.statusCode == 200 {
-            self.token = extractToken(from: response)!
-            let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            if let taxesData = responseJSON?["taxes"],
-               let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
-               let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
-                DispatchQueue.main.async {
-                    self.taxes = decodedTaxes
+    func refreshTaxes() async {
+        await withCheckedContinuation { continuation in
+            APIQueueManager.shared.enqueueAPICall { token, userId, completion in
+                let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                Task {
+                    do {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        guard let httpResponse = response as? HTTPURLResponse else {
+                            alertMessage = "Parsing HTTPURLResponse Error"
+                            showAlert = true
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                            alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                            showAlert = true
+                            completion(nil)
+                            continuation.resume()
+                            return
+                        }
+                        if httpResponse.statusCode == 200 {
+                            let newToken = extractToken(from: response) ?? ""
+                            let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                            if let taxesData = responseJSON?["taxes"],
+                               let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
+                               let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
+                                DispatchQueue.main.async {
+                                    self.taxes = decodedTaxes
+                                }
+                            }
+                            completion(newToken)
+                        } else if httpResponse.statusCode == 401 {
+                            await MainActor.run {
+                                session.user = nil
+                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                                alertMessage = "Session expired. Please log in again."
+                                showAlert = true
+                            }
+                            completion(nil)
+                        } else {
+                            showAlert = true
+                            alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
+                            completion(nil)
+                        }
+                        continuation.resume()
+                    } catch {
+                        showAlert = true
+                        alertMessage = "Something went wrong: \(error.localizedDescription)"
+                        completion(nil)
+                        continuation.resume()
+                    }
                 }
             }
-        } else {
-            showAlert = true
-            alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
         }
     }
     
@@ -539,51 +581,80 @@ public struct ApartmentView: View {
         )
         do {
             let jsonData = try VeygoJsonStandard.shared.encoder.encode(payload)
-            // You can proceed to use jsonData as needed
-            let request = veygoCurlRequest(url: "/api/v1/apartment/add-apartment", method: "POST", headers: ["auth": "\(token)$\(userId)"], body: jsonData)
-            let (_, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse: HTTPURLResponse = response as? HTTPURLResponse else {
-                print("Parsing HTTPURLResponse Error")
-                throw URLError(.cannotConnectToHost)
+            await withCheckedContinuation { continuation in
+                APIQueueManager.shared.enqueueAPICall { token, userId, completion in
+                    let request = veygoCurlRequest(url: "/api/v1/apartment/add-apartment", method: "POST", headers: ["auth": "\(token)$\(userId)"], body: jsonData)
+                    Task {
+                        do {
+                            let (_, response) = try await URLSession.shared.data(for: request)
+                            guard let httpResponse: HTTPURLResponse = response as? HTTPURLResponse else {
+                                alertMessage = "Parsing HTTPURLResponse Error"
+                                showAlert = true
+                                completion(nil)
+                                continuation.resume()
+                                return
+                            }
+                            if httpResponse.statusCode == 401 {
+                                await MainActor.run {
+                                    session.user = nil
+                                    APIQueueManager.shared.setAuth(userId: 0, token: "")
+                                    alertMessage = "Session expired. Please log in again."
+                                    showAlert = true
+                                }
+                                completion(nil)
+                                continuation.resume()
+                                return
+                            }
+                            guard httpResponse.statusCode == 201 else {
+                                alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
+                                showAlert = true
+                                completion(nil)
+                                continuation.resume()
+                                return
+                            }
+                            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                                showAlert = true
+                                completion(nil)
+                                continuation.resume()
+                                return
+                            }
+                            newAptName = ""
+                            newAptEmail = ""
+                            newAptPhone = ""
+                            newAptAddress = ""
+                            acceptedSchoolEmailDomain = ""
+                            freeTierHours = ""
+                            silverTierHours = ""
+                            silverTierRate = ""
+                            goldTierHours = ""
+                            goldTierRate = ""
+                            platinumTierHours = ""
+                            platinumTierRate = ""
+                            durationRate = ""
+                            liabilityProtectionRate = ""
+                            pcdwProtectionRate = ""
+                            pcdwExtProtectionRate = ""
+                            rsaProtectionRate = ""
+                            paiProtectionRate = ""
+                            isOperating = true
+                            isPublic = true
+                            aptTaxes = []
+                            aptTaxSearch = ""
+                            await refreshApartments()
+                            completion(nil)
+                            continuation.resume()
+                        } catch {
+                            alertMessage = "Something went wrong: \(error.localizedDescription)"
+                            showAlert = true
+                            completion(nil)
+                            continuation.resume()
+                        }
+                    }
+                }
             }
-            
-            guard httpResponse.statusCode == 201 else {
-                print("Wrong Status Code: \(httpResponse.statusCode)")
-                throw URLError(.badServerResponse)
-            }
-            
-            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                print("Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")")
-                throw URLError(.cannotDecodeRawData)
-            }
-            
-            newAptName = ""
-            newAptEmail = ""
-            newAptPhone = ""
-            newAptAddress = ""
-            acceptedSchoolEmailDomain = ""
-            freeTierHours = ""
-            silverTierHours = ""
-            silverTierRate = ""
-            goldTierHours = ""
-            goldTierRate = ""
-            platinumTierHours = ""
-            platinumTierRate = ""
-            durationRate = ""
-            liabilityProtectionRate = ""
-            pcdwProtectionRate = ""
-            pcdwExtProtectionRate = ""
-            rsaProtectionRate = ""
-            paiProtectionRate = ""
-            isOperating = true
-            isPublic = true
-            aptTaxes = []
-            aptTaxSearch = ""
-            
-            await refreshApartments()
         } catch {
-            alertMessage = "\(error.localizedDescription)"
+            alertMessage = "Something went wrong: \(error.localizedDescription)"
             showAlert = true
             return
         }

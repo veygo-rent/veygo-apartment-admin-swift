@@ -62,33 +62,76 @@ class AdminSession: ObservableObject {
         if token.isEmpty || userId == 0 {
             throw URLError(.userAuthenticationRequired)
         }
-        
-        let request = veygoCurlRequest(url: "/api/v1/admin/retrieve", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200,
-              httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-            print("Invalid or unauthorized response")
-            throw URLError(.badServerResponse)
-        }
-        
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let renter = json["admin"],
-              let renterData = try? JSONSerialization.data(withJSONObject: renter),
-              let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterData) else {
-            print("Failed to parse user from response")
-            throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Could not decode admin user"))
-        }
-        
-        let newToken = httpResponse.value(forHTTPHeaderField: "token")!
-        
-        await MainActor.run {
-            self.user = decodedUser
-            self.token = newToken
-            self.userId = decodedUser.id
-            print("New token refreshed.")
-            print("User loaded via token: \(decodedUser.name)")
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            APIQueueManager.shared.enqueueAPICall { token, userId, completion in
+                let request = veygoCurlRequest(url: "/api/v1/admin/retrieve", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                Task {
+                    do {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        guard let httpResponse = response as? HTTPURLResponse,
+                              httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                            print("Invalid or unauthorized response")
+                            await MainActor.run {
+                                self.user = nil
+                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                            }
+                            completion(nil)
+                            continuation.resume(throwing: URLError(.badServerResponse))
+                            return
+                        }
+                        if httpResponse.statusCode == 401 {
+                            print("Unauthorized: 401")
+                            await MainActor.run {
+                                self.user = nil
+                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                            }
+                            completion(nil)
+                            continuation.resume(throwing: URLError(.userAuthenticationRequired))
+                            return
+                        }
+                        guard httpResponse.statusCode == 200 else {
+                            print("Invalid or unauthorized response")
+                            await MainActor.run {
+                                self.user = nil
+                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                            }
+                            completion(nil)
+                            continuation.resume(throwing: URLError(.badServerResponse))
+                            return
+                        }
+                        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                              let renter = json["admin"],
+                              let renterData = try? JSONSerialization.data(withJSONObject: renter),
+                              let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterData) else {
+                            print("Failed to parse user from response")
+                            await MainActor.run {
+                                self.user = nil
+                                APIQueueManager.shared.setAuth(userId: 0, token: "")
+                            }
+                            completion(nil)
+                            continuation.resume(throwing: DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Could not decode admin user")))
+                            return
+                        }
+                        let newToken = httpResponse.value(forHTTPHeaderField: "token") ?? ""
+                        await MainActor.run {
+                            self.user = decodedUser
+                            self.token = newToken
+                            self.userId = decodedUser.id
+                            print("New token refreshed.")
+                            print("User loaded via token: \(decodedUser.name)")
+                        }
+                        completion(newToken)
+                        continuation.resume()
+                    } catch {
+                        await MainActor.run {
+                            self.user = nil
+                            APIQueueManager.shared.setAuth(userId: 0, token: "")
+                        }
+                        completion(nil)
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
         }
     }
 }
