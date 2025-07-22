@@ -83,80 +83,72 @@ public struct RenterView: View {
             Alert(title: Text("Alert"), message: Text(alertMessage), dismissButton: .default(Text("OK")){
                 if deleteData {
                     session.user = nil
-                    APIQueueManager.shared.setAuth(userId: 0, token: "")
+                    token = ""
+                    userId = 0
                 }
             })
         }
     }
     
-    func refreshRenters() async {
-        await withCheckedContinuation { continuation in
-            APIQueueManager.shared.enqueueAPICall { token, userId, completion in
-                print("token: \(token)")
-                let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-                Task {
-                    do {
-                        let (data, response) = try await URLSession.shared.data(for: request)
-                        guard let httpResponse = response as? HTTPURLResponse else {
-                            await MainActor.run {
-                                deleteData = true
-                                alertMessage = "Parsing HTTPURLResponse Error"
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                            return
-                        }
-                        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                            await MainActor.run {
-                                deleteData = true
-                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                            return
-                        }
-                        switch httpResponse.statusCode {
-                        case 200:
-                            let newToken = extractToken(from: response) ?? ""
-                            let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                            if let renterData = responseJSON?["renters"],
-                               let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
-                               let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
-                                await MainActor.run {
-                                    deleteData = false
-                                    renters = decodedUser
-                                }
-                            }
-                            completion(newToken)
-                            continuation.resume()
-                        case 401:
-                            await MainActor.run {
-                                deleteData = true
-                                alertMessage = "Session expired. Please log in again."
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                        default:
-                            await MainActor.run {
-                                deleteData = true
-                                alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                        }
-                    } catch {
-                        await MainActor.run {
-                            deleteData = true
-                            alertMessage = "Network error: \(error.localizedDescription)"
-                            showAlert = true
-                        }
-                        completion(nil)
-                        continuation.resume()
+    @APIQueueActor func refreshRenters() {
+        Task {
+            let token = await token
+            let userId = await userId
+            let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        deleteData = true
+                        alertMessage = "Parsing HTTPURLResponse Error"
+                        showAlert = true
                     }
+                    return
+                }
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        deleteData = true
+                        alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                        showAlert = true
+                    }
+                    return
+                }
+                switch httpResponse.statusCode {
+                case 200:
+                    let newToken = extractToken(from: response) ?? ""
+                    if !newToken.isEmpty && newToken != token {
+                        await MainActor.run {
+                            self.token = newToken
+                        }
+                    }
+                    let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                    if let renterData = responseJSON?["renters"],
+                       let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData) {
+                        await MainActor.run {
+                            if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
+                                deleteData = false
+                                renters = decodedUser
+                            }
+                        }
+                    }
+                case 401:
+                    await MainActor.run {
+                        deleteData = true
+                        alertMessage = "Session expired. Please log in again."
+                        showAlert = true
+                    }
+                default:
+                    await MainActor.run {
+                        deleteData = true
+                        alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                        showAlert = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    deleteData = true
+                    alertMessage = "Network error: \(error.localizedDescription)"
+                    showAlert = true
                 }
             }
         }

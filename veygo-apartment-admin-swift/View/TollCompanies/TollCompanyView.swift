@@ -158,7 +158,8 @@ struct TollCompanyView: View {
             Alert(title: Text("Alert"), message: Text(alertMessage), dismissButton: .default(Text("OK")){
                 if deleteData {
                     session.user = nil
-                    APIQueueManager.shared.setAuth(userId: 0, token: "")
+                    token = ""
+                    userId = 0
                 }
             })
         }
@@ -200,74 +201,65 @@ struct TollCompanyView: View {
         }
     }
     
-    func refreshTollCompanies() async {
-        await withCheckedContinuation { continuation in
-            APIQueueManager.shared.enqueueAPICall { token, userId, completion in
-                let request = veygoCurlRequest(url: "/api/v1/toll/get-company", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-                Task {
-                    do {
-                        let (data, response) = try await URLSession.shared.data(for: request)
-                        
-                        guard let httpResponse = response as? HTTPURLResponse else {
-                            await MainActor.run {
-                                deleteData = true
-                                alertMessage = "Invalid server response."
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                            return
-                        }
-                        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                            await MainActor.run {
-                                deleteData = true
-                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                            return
-                        }
-                        switch httpResponse.statusCode {
-                        case 200:
-                            let newToken = extractToken(from: response) ?? ""
-                            let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                            if let tcsData = responseJSON?["transponder_companies"],
-                               let tcsJSONArray = try? JSONSerialization.data(withJSONObject: tcsData),
-                               let decodedTCs = try? VeygoJsonStandard.shared.decoder.decode([TransponderCompany].self, from: tcsJSONArray) {
-                                await MainActor.run {
-                                    deleteData = false
-                                    tollCompanies = decodedTCs
-                                }
-                            }
-                            completion(newToken)
-                            continuation.resume()
-                        case 401:
-                            await MainActor.run {
-                                deleteData = true
-                                alertMessage = "Session expired. Please log in again."
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                        default:
-                            await MainActor.run {
-                                deleteData = true
-                                alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                        }
-                    } catch {
-                        await MainActor.run {
-                            deleteData = true
-                            alertMessage = "Network error: \(error.localizedDescription)"
-                            showAlert = true
-                        }
-                        completion(nil)
-                        continuation.resume()
+    @APIQueueActor func refreshTollCompanies() {
+        Task {
+            let token = await token
+            let userId = await userId
+            let request = veygoCurlRequest(url: "/api/v1/toll/get-company", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        deleteData = true
+                        alertMessage = "Parsing HTTPURLResponse Error"
+                        showAlert = true
                     }
+                    return
+                }
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        deleteData = true
+                        alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                        showAlert = true
+                    }
+                    return
+                }
+                switch httpResponse.statusCode {
+                case 200:
+                    let newToken = extractToken(from: response) ?? ""
+                    if !newToken.isEmpty && newToken != token {
+                        await MainActor.run {
+                            self.token = newToken
+                        }
+                    }
+                    let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                    if let tcsData = responseJSON?["transponder_companies"],
+                       let tcsJSONArray = try? JSONSerialization.data(withJSONObject: tcsData) {
+                        await MainActor.run {
+                            if let decodedTCs = try? VeygoJsonStandard.shared.decoder.decode([TransponderCompany].self, from: tcsJSONArray) {
+                                deleteData = false
+                                tollCompanies = decodedTCs
+                            }
+                        }
+                    }
+                case 401:
+                    await MainActor.run {
+                        deleteData = true
+                        alertMessage = "Session expired. Please log in again."
+                        showAlert = true
+                    }
+                default:
+                    await MainActor.run {
+                        deleteData = true
+                        alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                        showAlert = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    deleteData = true
+                    alertMessage = "Network error: \(error.localizedDescription)"
+                    showAlert = true
                 }
             }
         }

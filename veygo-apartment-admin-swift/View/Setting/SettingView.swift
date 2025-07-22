@@ -43,23 +43,29 @@ public struct SettingView: View {
                 
                 // Stand‑alone “Log Out” action
                 Button(role: .destructive) {
-                    // TODO: hook up your actual sign‑out logic here
-                    let request = veygoCurlRequest(url: "/api/v1/user/remove-token", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-                    URLSession.shared.dataTask(with: request) { data, response, error in
-                        guard let httpResponse = response as? HTTPURLResponse else {
-                            print("Invalid server response.")
-                            return
-                        }
-                        if httpResponse.statusCode == 200 {
-                            token = ""
-                            userId = 0
-                            DispatchQueue.main.async {
-                                // Update UserSession
-                                self.session.user = nil
+                    Task {
+                        let request = await veygoCurlRequest(url: "/api/v1/user/remove-token", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                        do {
+                            let (_, response) = try await URLSession.shared.data(for: request)
+                            guard let httpResponse = response as? HTTPURLResponse else {
+                                print("Invalid server response.")
+                                return
                             }
-                            print("🧼 Token cleared")
+                            switch httpResponse.statusCode {
+                            case 200:
+                                await MainActor.run {
+                                    token = ""
+                                    userId = 0
+                                    self.session.user = nil
+                                }
+                                print("🧼 Token cleared")
+                            default:
+                                print("Error logging out, status code: \(httpResponse.statusCode)")
+                            }
+                        } catch {
+                            print("Logout failed with error: \(error.localizedDescription)")
                         }
-                    }.resume()
+                    }
                 } label: {
                     Text("Log Out")
                         .frame(maxWidth: .infinity, alignment: .leading)

@@ -119,6 +119,7 @@ struct Apartment: Identifiable, Equatable, Codable, HasName {
     var taxes: [Int?]
 }
 
+@APIQueueActor
 struct ApartmentNew: Equatable, Codable, HasName {
     var name: String
     var email: String

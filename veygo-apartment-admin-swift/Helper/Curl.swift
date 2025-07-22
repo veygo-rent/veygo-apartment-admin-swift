@@ -7,7 +7,7 @@
 
 import Foundation
 
-public func veygoCurlRequest (url: String, method: String, headers: [String: String] = [:], body: Data? = nil) -> URLRequest {
+@APIQueueActor public func veygoCurlRequest (url: String, method: String, headers: [String: String] = [:], body: Data? = nil) -> URLRequest {
     let BASE_PATH = "https://dev.veygo.rent"
     guard let fullURL = URL(string: "\(BASE_PATH)\(url)") else {
         fatalError("Invalid URL: \(BASE_PATH)\(url)")
@@ -47,7 +47,7 @@ class VeygoJsonStandard {
     }()
 }
 
-public func extractToken(from response: URLResponse?) -> String? {
+@APIQueueActor public func extractToken(from response: URLResponse?) -> String? {
     guard let httpResponse = response as? HTTPURLResponse else {
         print("Failed to cast response to HTTPURLResponse")
         return nil

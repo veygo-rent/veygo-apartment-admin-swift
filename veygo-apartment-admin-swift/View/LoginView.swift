@@ -23,10 +23,10 @@ struct LoginView: View {
     @State private var path = NavigationPath()
     
     @State private var goToResetView = false
-
+    
     @State private var showAlert = false
     @State private var alertMessage = ""
-
+    
     @AppStorage("token") var token: String = ""
     @AppStorage("user_id") var userId: Int = 0
     
@@ -36,7 +36,7 @@ struct LoginView: View {
         NavigationStack(path: $path) {
             VStack {
                 Spacer()
-
+                
                 Image("VeygoLogo")
                     .resizable()
                     .scaledToFit()
@@ -44,7 +44,7 @@ struct LoginView: View {
                 Text("Veygo Apartment Admin")
                     .font(.system(size: 36, weight: .semibold, design: .default))
                     .foregroundColor(Color("TextBlackSecondary"))
-
+                
                 TextInputField(placeholder: "Email", text: $email)
                     .onChange(of: email) { oldValue, newValue in
                         email = newValue.lowercased()
@@ -66,14 +66,14 @@ struct LoginView: View {
                 .alert(isPresented: $showAlert) {
                     Alert(title: Text("Login Failed"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
                 }
-
+                
                 Spacer().frame(height: 20)
                 ShortTextLink(text: "Forgot Password?") {
                     goToResetView = true
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.leading, 10)
-
+                
                 Spacer()
             }
             .padding(.horizontal, 400)
@@ -84,79 +84,71 @@ struct LoginView: View {
         }
         .background(Color("MainBG").ignoresSafeArea(.all))
     }
-
-    func loginUser() async {
-        let body: [String: String] = ["email": email, "password": password]
-        let jsonData = try? JSONSerialization.data(withJSONObject: body)
-        
-        await withCheckedContinuation { continuation in
-            APIQueueManager.shared.enqueueAPICall { token, userId, completion in
-                let request = veygoCurlRequest(url: "/api/v1/admin/login", method: "POST", body: jsonData)
-                Task {
-                    do {
-                        let (data, response) = try await URLSession.shared.data(for: request)
-                        guard let httpResponse = response as? HTTPURLResponse else {
-                            await MainActor.run {
-                                alertMessage = "Invalid server response."
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                            return
-                        }
-                        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                            await MainActor.run {
-                                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                            return
-                        }
-                        switch httpResponse.statusCode {
-                        case 200:
-                            let newToken = extractToken(from: response) ?? ""
-                            let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                            if let renterData = responseJSON?["admin"],
-                               let renterJSON = try? JSONSerialization.data(withJSONObject: renterData) {
-                                if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
-                                    APIQueueManager.shared.setAuth(userId: decodedUser.id, token: newToken)
-                                    await MainActor.run {
-                                        print("\nLogin successful: \(newToken) \(decodedUser.id)\n")
-                                        self.session.user = decodedUser
-                                    }
-                                }
-                            }
-                            completion(newToken)
-                            continuation.resume()
-                        case 401:
-                            await MainActor.run {
-                                alertMessage = "Email or password is incorrect"
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                        default:
-                            await MainActor.run {
-                                alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                                showAlert = true
-                            }
-                            completion(nil)
-                            continuation.resume()
-                        }
-                    } catch {
-                        await MainActor.run {
-                            alertMessage = "Network error: \(error.localizedDescription)"
-                            showAlert = true
-                        }
-                        completion(nil)
-                        continuation.resume()
+    
+    @APIQueueActor
+    func loginUser() {
+        Task {
+            let body: [String: String] = await ["email": email, "password": password]
+            guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
+                await MainActor.run {
+                    alertMessage = "Failed to serialize request body."
+                    showAlert = true
+                }
+                return
+            }
+            
+            let request = veygoCurlRequest(url: "/api/v1/admin/login", method: "POST", body: jsonData)
+            
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        alertMessage = "Invalid server response."
+                        showAlert = true
                     }
+                    return
+                }
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
+                        showAlert = true
+                    }
+                    return
+                }
+                switch httpResponse.statusCode {
+                case 200:
+                    let newToken = extractToken(from: response) ?? ""
+                    let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                    if let renterData = responseJSON?["admin"],
+                       let renterJSON = try? JSONSerialization.data(withJSONObject: renterData) {
+                        await MainActor.run {
+                            if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
+                                self.session.user = decodedUser
+                                self.token = newToken
+                                self.userId = decodedUser.id
+                            }
+                        }
+                    }
+                case 401:
+                    await MainActor.run {
+                        alertMessage = "Email or password is incorrect"
+                        showAlert = true
+                    }
+                default:
+                    await MainActor.run {
+                        alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                        showAlert = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    alertMessage = "Network error: \(error.localizedDescription)"
+                    showAlert = true
                 }
             }
         }
     }
-
+    
 }
 
 #Preview {
