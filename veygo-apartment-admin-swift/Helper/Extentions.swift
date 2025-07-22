@@ -9,12 +9,6 @@ import Foundation
 import SwiftUI
 internal import Combine
 
-extension Array where Element == PublishRenter {
-    func getRenterDetail(for renterID: Int) -> PublishRenter? {
-        return self.first { $0.id == renterID }
-    }
-}
-
 extension Array where Element: Identifiable, Element.ID == Int {
     func getItemBy(id: Int) -> Element? {
         return self.first { $0.id == id }
