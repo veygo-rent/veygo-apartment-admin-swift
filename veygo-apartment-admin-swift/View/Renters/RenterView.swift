@@ -92,15 +92,16 @@ public struct RenterView: View {
     func refreshRenters() async {
         await withCheckedContinuation { continuation in
             APIQueueManager.shared.enqueueAPICall { token, userId, completion in
+                print("token: \(token)")
                 let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
                 Task {
                     do {
                         let (data, response) = try await URLSession.shared.data(for: request)
                         guard let httpResponse = response as? HTTPURLResponse else {
                             await MainActor.run {
+                                deleteData = true
                                 alertMessage = "Parsing HTTPURLResponse Error"
                                 showAlert = true
-                                deleteData = true
                             }
                             completion(nil)
                             continuation.resume()
@@ -108,9 +109,9 @@ public struct RenterView: View {
                         }
                         guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
                             await MainActor.run {
+                                deleteData = true
                                 alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
                                 showAlert = true
-                                deleteData = true
                             }
                             completion(nil)
                             continuation.resume()
@@ -124,6 +125,7 @@ public struct RenterView: View {
                                let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
                                let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
                                 await MainActor.run {
+                                    deleteData = false
                                     renters = decodedUser
                                 }
                             }
@@ -131,26 +133,26 @@ public struct RenterView: View {
                             continuation.resume()
                         case 401:
                             await MainActor.run {
+                                deleteData = true
                                 alertMessage = "Session expired. Please log in again."
                                 showAlert = true
-                                deleteData = true
                             }
                             completion(nil)
                             continuation.resume()
                         default:
                             await MainActor.run {
+                                deleteData = true
                                 alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
                                 showAlert = true
-                                deleteData = true
                             }
                             completion(nil)
                             continuation.resume()
                         }
                     } catch {
                         await MainActor.run {
+                            deleteData = true
                             alertMessage = "Network error: \(error.localizedDescription)"
                             showAlert = true
-                            deleteData = true
                         }
                         completion(nil)
                         continuation.resume()

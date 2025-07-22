@@ -441,9 +441,9 @@ public struct ApartmentView: View {
                         let (data, response) = try await URLSession.shared.data(for: request)
                         guard let httpResponse = response as? HTTPURLResponse else {
                             await MainActor.run {
+                                deleteData = true
                                 alertMessage = "Parsing HTTPURLResponse Error"
                                 showAlert = true
-                                deleteData = true
                             }
                             completion(nil)
                             continuation.resume()
@@ -451,9 +451,9 @@ public struct ApartmentView: View {
                         }
                         guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
                             await MainActor.run {
+                                deleteData = true
                                 alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
                                 showAlert = true
-                                deleteData = true
                             }
                             completion(nil)
                             continuation.resume()
@@ -469,8 +469,6 @@ public struct ApartmentView: View {
                                 await MainActor.run {
                                     deleteData = false
                                     self.apartments = decodedApartments
-                                    alertMessage = "Apartment added successfully"
-                                    showAlert = true
                                 }
                             }
                             completion(newToken)
@@ -541,8 +539,8 @@ public struct ApartmentView: View {
                                let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
                                let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
                                 await MainActor.run {
-                                    self.taxes = decodedTaxes
                                     deleteData = false
+                                    self.taxes = decodedTaxes
                                 }
                             }
                             completion(newToken)
@@ -633,6 +631,15 @@ public struct ApartmentView: View {
                                 return
                             }
                             switch httpResponse.statusCode {
+                            case 406:
+                                let newToken = extractToken(from: response) ?? ""
+                                await MainActor.run {
+                                    deleteData = false
+                                    alertMessage = "Apartment exists"
+                                    showAlert = true
+                                }
+                                completion(newToken)
+                                continuation.resume()
                             case 201:
                                 let newToken = extractToken(from: response) ?? ""
                                 await MainActor.run {
@@ -659,6 +666,8 @@ public struct ApartmentView: View {
                                     isPublic = true
                                     aptTaxes = []
                                     aptTaxSearch = ""
+                                    showAlert = true
+                                    alertMessage = "Apartment added successfully"
                                 }
                                 await refreshApartments()
                                 completion(newToken)
@@ -670,14 +679,6 @@ public struct ApartmentView: View {
                                     showAlert = true
                                 }
                                 completion(nil)
-                                continuation.resume()
-                            case 406:
-                                let newToken = extractToken(from: response) ?? ""
-                                await MainActor.run {
-                                    alertMessage = "Apartment exists"
-                                    showAlert = true
-                                }
-                                completion(newToken)
                                 continuation.resume()
                             default:
                                 await MainActor.run {

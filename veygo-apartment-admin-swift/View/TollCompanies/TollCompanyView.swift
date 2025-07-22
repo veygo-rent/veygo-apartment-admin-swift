@@ -244,7 +244,7 @@ struct TollCompanyView: View {
                             continuation.resume()
                         case 401:
                             await MainActor.run {
-                                deleteData = false
+                                deleteData = true
                                 alertMessage = "Session expired. Please log in again."
                                 showAlert = true
                             }
@@ -252,7 +252,7 @@ struct TollCompanyView: View {
                             continuation.resume()
                         default:
                             await MainActor.run {
-                                deleteData = false
+                                deleteData = true
                                 alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
                                 showAlert = true
                             }
@@ -261,7 +261,7 @@ struct TollCompanyView: View {
                         }
                     } catch {
                         await MainActor.run {
-                            deleteData = false
+                            deleteData = true
                             alertMessage = "Network error: \(error.localizedDescription)"
                             showAlert = true
                         }
