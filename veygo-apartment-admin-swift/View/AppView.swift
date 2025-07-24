@@ -19,16 +19,16 @@ struct AppView: View {
     
     @State private var apartments: [Apartment] = []
     @State private var renters: [PublishRenter] = []
-    @State private var taxes: [TaxViewModel] = []
-    @State private var tollCompanies: [TransponderCompanyViewModel] = []
-    @State private var emailIsValid: Bool = false
+    @State private var taxes: [Tax] = []
+    @State private var tollCompanies: [TransponderCompany] = []
+    @State private var aptTaxes: [Int?] = []
     
     var body: some View {
         if session.user == nil {
             Text("Bad Credentials")
         } else {
             TabView (selection: $selected) {
-                if emailIsValid {
+                if session.user!.emailIsValid() {
                     TabSection("Summary") {
                         Tab("Overview", systemImage: "chart.pie", value: RootDestination.overview) {
                             OverviewView()
@@ -74,26 +74,6 @@ struct AppView: View {
             }
             .tabViewStyle(.sidebarAdaptable)
             .scrollContentBackground(.hidden)
-            .onAppear {
-                Task { @BackgroundActor in
-                    if let user = await session.user {
-                        let isValid = user.emailIsValid
-                        await MainActor.run { emailIsValid = isValid }
-                    } else {
-                        await MainActor.run { emailIsValid = false }
-                    }
-                }
-            }
-            .onChange(of: session.user) { _, newUser in
-                Task { @BackgroundActor in
-                    if let user = newUser {
-                        let isValid = user.emailIsValid
-                        await MainActor.run { emailIsValid = isValid }
-                    } else {
-                        await MainActor.run { emailIsValid = false }
-                    }
-                }
-            }
         }
     }
 }

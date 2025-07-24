@@ -23,10 +23,10 @@ struct LoginView: View {
     @State private var path = NavigationPath()
     
     @State private var goToResetView = false
-    
+
     @State private var showAlert = false
     @State private var alertMessage = ""
-    
+
     @AppStorage("token") var token: String = ""
     @AppStorage("user_id") var userId: Int = 0
     
@@ -36,7 +36,7 @@ struct LoginView: View {
         NavigationStack(path: $path) {
             VStack {
                 Spacer()
-                
+
                 Image("VeygoLogo")
                     .resizable()
                     .scaledToFit()
@@ -44,7 +44,7 @@ struct LoginView: View {
                 Text("Veygo Apartment Admin")
                     .font(.system(size: 36, weight: .semibold, design: .default))
                     .foregroundColor(Color("TextBlackSecondary"))
-                
+
                 TextInputField(placeholder: "Email", text: $email)
                     .onChange(of: email) { oldValue, newValue in
                         email = newValue.lowercased()
@@ -60,20 +60,20 @@ struct LoginView: View {
                         alertMessage = "Please enter your password"
                         showAlert = true
                     } else {
-                        Task { await loginUser() }
+                        loginUser()
                     }
                 }
                 .alert(isPresented: $showAlert) {
                     Alert(title: Text("Login Failed"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
                 }
-                
+
                 Spacer().frame(height: 20)
                 ShortTextLink(text: "Forgot Password?") {
                     goToResetView = true
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.leading, 10)
-                
+
                 Spacer()
             }
             .padding(.horizontal, 400)
@@ -84,75 +84,61 @@ struct LoginView: View {
         }
         .background(Color("MainBG").ignoresSafeArea(.all))
     }
-    
-    @BackgroundActor func loginUser() {
-        Task {
-            let body: [String: String] = await ["email": email, "password": password]
-            guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
-                await MainActor.run {
-                    alertMessage = "Failed to serialize request body."
+
+    func loginUser() {
+        let body: [String: String] = ["email": email, "password": password]
+        let jsonData = try? JSONSerialization.data(withJSONObject: body)
+        
+        let request = veygoCurlRequest(url: "/api/v1/admin/login", method: "POST", body: jsonData)
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    alertMessage = "Network error: \(error.localizedDescription)"
                     showAlert = true
                 }
                 return
             }
-            
-            let request = veygoCurlRequest(url: "/api/v1/admin/login", method: "POST", body: jsonData)
-            
-            do {
-                let (data, response) = try await URLSession.shared.data(for: request)
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    await MainActor.run {
-                        alertMessage = "Invalid server response."
-                        showAlert = true
-                    }
-                    return
+
+            guard let httpResponse = response as? HTTPURLResponse, let data = data,
+            httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                DispatchQueue.main.async {
+                    alertMessage = "Invalid server response."
+                    showAlert = true
                 }
-                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                    await MainActor.run {
-                        alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-                        showAlert = true
-                    }
-                    return
-                }
-                switch httpResponse.statusCode {
-                case 200:
-                    let newToken = extractToken(from: response) ?? ""
-                    let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                    let renterData = responseJSON?["admin"]
-                    let renterJSONArray = renterData.flatMap { try? JSONSerialization.data(withJSONObject: $0) }
-                    let decodedUser = renterJSONArray.flatMap { try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: $0) }
-                    await MainActor.run {
-                        self.token = newToken
-                        guard let decodedUser else {
-                            alertMessage = "Failed to parse renters."
-                            showAlert = true
-                            return
+                return
+            }
+
+            if httpResponse.statusCode == 200 {
+                // Update AppStorage
+                self.token = extractToken(from: response)!
+                let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                if let renterData = responseJSON?["admin"],
+                   let renterJSON = try? JSONSerialization.data(withJSONObject: renterData) {
+                    DispatchQueue.main.async {
+                        if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
+                            self.userId = decodedUser.id
+                            print("\nLogin successful: \(self.token) \(decodedUser.id)\n")
+                            self.session.user = decodedUser
                         }
-                        session.user = decodedUser
-                    }
-                case 401:
-                    await MainActor.run {
-                        alertMessage = "Email or password is incorrect"
-                        showAlert = true
-                    }
-                default:
-                    await MainActor.run {
-                        alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                        showAlert = true
                     }
                 }
-            } catch {
-                await MainActor.run {
-                    alertMessage = "Network error: \(error.localizedDescription)"
+            } else if httpResponse.statusCode == 401 {
+                DispatchQueue.main.async {
+                    alertMessage = "Email or password is incorrect"
+                    showAlert = true
+                }
+            } else {
+                DispatchQueue.main.async {
+                    alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
                     showAlert = true
                 }
             }
-        }
+        }.resume()
     }
-    
+
 }
 
 #Preview {
     LoginView()
 }
-

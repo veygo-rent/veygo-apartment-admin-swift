@@ -7,7 +7,7 @@
 
 import Foundation
 
-@BackgroundActor public func veygoCurlRequest (url: String, method: String, headers: [String: String] = [:], body: Data? = nil) -> URLRequest {
+public func veygoCurlRequest (url: String, method: String, headers: [String: String] = [:], body: Data? = nil) -> URLRequest {
     let BASE_PATH = "https://dev.veygo.rent"
     guard let fullURL = URL(string: "\(BASE_PATH)\(url)") else {
         fatalError("Invalid URL: \(BASE_PATH)\(url)")
@@ -30,7 +30,7 @@ import Foundation
     return request
 }
 
-@BackgroundActor class VeygoJsonStandard {
+class VeygoJsonStandard {
     static let shared = VeygoJsonStandard()
     let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
@@ -47,7 +47,7 @@ import Foundation
     }()
 }
 
-@BackgroundActor public func extractToken(from response: URLResponse?) -> String? {
+public func extractToken(from response: URLResponse?) -> String? {
     guard let httpResponse = response as? HTTPURLResponse else {
         print("Failed to cast response to HTTPURLResponse")
         return nil

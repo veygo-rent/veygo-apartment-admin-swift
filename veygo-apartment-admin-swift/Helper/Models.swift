@@ -54,7 +54,6 @@ enum TransactionType: String, Codable {
     case cash = "Cash"
 }
 
-@BackgroundActor
 struct PublishRenter: Identifiable, Equatable, Codable {
     var id: Int
     var name: String
@@ -93,7 +92,6 @@ struct DoNotRentList: Identifiable, Equatable, Codable {
     var exp: String?
 }
 
-@BackgroundActor
 struct Apartment: Identifiable, Equatable, Codable, HasName {
     var id: Int
     var name: String
@@ -121,7 +119,6 @@ struct Apartment: Identifiable, Equatable, Codable, HasName {
     var taxes: [Int?]
 }
 
-@BackgroundActor
 struct ApartmentNew: Equatable, Codable, HasName {
     var name: String
     var email: String
@@ -148,7 +145,6 @@ struct ApartmentNew: Equatable, Codable, HasName {
     var taxes: [Int?]
 }
 
-@BackgroundActor
 struct Tax: Identifiable, Equatable, Codable, HasName {
     var id: Int
     var name: String
@@ -156,7 +152,6 @@ struct Tax: Identifiable, Equatable, Codable, HasName {
     var isEffective: Bool
 }
 
-@BackgroundActor
 struct TransponderCompany: Identifiable, Equatable, Codable {
     var id: Int
     var name: String

@@ -16,12 +16,10 @@ public struct RenterView: View {
     @AppStorage("token") private var token: String = ""
     @AppStorage("user_id") private var userId: Int = 0
     
-    @MainActor @Binding var renters: [PublishRenter]
+    @Binding var renters: [PublishRenter]
     @State private var searchText: String = ""
     
     @State private var doNotRentRecords: [DoNotRentList] = [DoNotRentList(id: 1, note: "Renter doing illegal activities with our vehicle. "), DoNotRentList(id: 2, note: "Renter intentionally running into a police vehicle. ")]
-    
-    @State private var deleteData: Bool = false
     
     // Computed list that respects the search query (searches name, email, and phone)
     private var filteredRenters: [PublishRenter] {
@@ -34,7 +32,6 @@ public struct RenterView: View {
     }
     
     @State private var seletedRenter: PublishRenter.ID? = nil
-    @State private var seletedRenterObj: PublishRenter? = nil
     
     public var body: some View {
         
@@ -65,18 +62,10 @@ public struct RenterView: View {
                     }
                 }
             }
-            .task(id: seletedRenter) { @BackgroundActor in
-                if let renterID = await seletedRenter,
-                   let renter = await renters.getItemBy(id: renterID) {
-                    await MainActor.run {
-                        seletedRenterObj = renter
-                    }
-                }
-            }
         } detail: {
             ZStack {
                 Color("MainBG").ignoresSafeArea()
-                if let renter = seletedRenterObj {
+                if let renterID = seletedRenter, let renter = renters.getItemBy(id: renterID) {
                     RenterCardViewNew(doNotRentRecords: $doNotRentRecords, renter: renter)
                 }
             }
@@ -88,72 +77,44 @@ public struct RenterView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
-        .alert(isPresented: $showAlert) {
-            Alert(title: Text("Alert"), message: Text(alertMessage), dismissButton: .default(Text("OK")){
-                if deleteData {
-                    session.user = nil
-                    token = ""
-                    userId = 0
-                }
-            })
-        }
     }
     
-    @BackgroundActor func refreshRenters() async {
-        let request = await veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+    func refreshRenters() async {
+        let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse else {
+
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
                 await MainActor.run {
-                    deleteData = true
-                    alertMessage = "Parsing HTTPURLResponse Error"
+                    alertMessage = "Invalid server response."
                     showAlert = true
                 }
                 return
             }
-            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                await MainActor.run {
-                    deleteData = true
-                    alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-                    showAlert = true
-                }
-                return
-            }
-            switch httpResponse.statusCode {
-            case 200:
-                let newToken = extractToken(from: response) ?? ""
-                // Decode on BackgroundActor before switching to MainActor
+
+            if httpResponse.statusCode == 200 {
+                self.token = extractToken(from: response)!
                 let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                let renterData = responseJSON?["renters"]
-                let renterJSONArray = renterData.flatMap { try? JSONSerialization.data(withJSONObject: $0) }
-                let decodedUser = renterJSONArray.flatMap { try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: $0) }
-                await MainActor.run {
-                    self.token = newToken
-                    guard let decodedUser else {
-                        deleteData = true
-                        alertMessage = "Failed to parse renters."
-                        showAlert = true
-                        return
+                if let renterData = responseJSON?["renters"],
+                   let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
+                   let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
+                    await MainActor.run {
+                        renters = decodedUser
                     }
-                    deleteData = false
-                    renters = decodedUser
                 }
-            case 401:
+            } else if httpResponse.statusCode == 401 {
                 await MainActor.run {
-                    deleteData = true
-                    alertMessage = "Session expired when refreshing renters. Please log in again."
+                    alertMessage = "Reverify login status failed"
                     showAlert = true
                 }
-            default:
+            } else {
                 await MainActor.run {
-                    deleteData = true
                     alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
                     showAlert = true
                 }
             }
         } catch {
             await MainActor.run {
-                deleteData = true
                 alertMessage = "Network error: \(error.localizedDescription)"
                 showAlert = true
             }
@@ -169,7 +130,6 @@ enum RenterAttributes: String, Equatable {
 
 struct RenterCardViewNew: View {
     @Binding var doNotRentRecords: [DoNotRentList]
-    @State private var validDNRRecords: [DoNotRentList] = []
     
     let renter: PublishRenter
     var body: some View {
@@ -191,19 +151,22 @@ struct RenterCardViewNew: View {
                     .fontWeight(.semibold)
                     .foregroundColor(Color("TextBlackPrimary"))
                     .listRowBackground(Color("CardBG"))
-                ForEach(validDNRRecords) { record in
-                    HStack {
-                        Text("\(record.note)")
-                            .foregroundColor(Color("TextBlackSecondary"))
-                        Spacer()
-                        ShortTextLink(text: "View Details") {
-                            // Do something
+                ForEach(doNotRentRecords) { record in
+                    if record.isValid() {
+                        HStack {
+                            Text("\(record.note)")
+                                .foregroundColor(Color("TextBlackSecondary"))
+                            Spacer()
+                            ShortTextLink(text: "View Details") {
+                                // Do something
+                            }
+                            ShortTextLink(text: "Delete") {
+                                // Do something
+                            }
                         }
-                        ShortTextLink(text: "Delete") {
-                            // Do something
-                        }
+                        .listRowBackground(Color("CardBG"))
+                        
                     }
-                    .listRowBackground(Color("CardBG"))
                 }
             }
             VStack (spacing: 0) {
@@ -231,37 +194,21 @@ struct RenterCardViewNew: View {
             .listRowBackground(Color("CardBG"))
         }
         .scrollContentBackground(.hidden)
-        .task(id: doNotRentRecords) {
-            await updateValidDNRRecords()
-        }
-    }
-    
-    @BackgroundActor private func updateValidDNRRecords() async {
-        let formatter = VeygoDateStandard.shared.YYYYMMDDformator
-        let filtered = await doNotRentRecords.compactMap { record in
-            if let exp = record.exp {
-                if let expDate = formatter.date(from: exp),
-                   expDate > Date.now {
-                    return record
-                } else {
-                    return nil
-                }
-            } else {
-                return record
-            }
-        }
-        await MainActor.run {
-            validDNRRecords = filtered
-        }
     }
 }
 
 struct RenterAttributeView: View {
     let renter: PublishRenter
     let attribute: RenterAttributes
-    @State private var expirationString: String?
-    @State private var expirationDate: Date?
-    @State private var dobString: String?
+    // Formatter to display dates like "Sep 26, 2001"
+    private static let displayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        // Keep the date in UTC so the printed day matches the stored string
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
     var body: some View {
         HStack (spacing: 0) {
             Text("\(attribute.rawValue): ")
@@ -272,8 +219,8 @@ struct RenterAttributeView: View {
                 Text("\(renter.studentEmail)")
                     .foregroundColor(Color("TextBlackSecondary"))
                 Spacer()
-                if let expirationString = expirationString,
-                   let expirationDate = expirationDate {
+                if let expirationString = renter.studentEmailExpiration,
+                   let expirationDate = dateFromYYYYMMDD(expirationString) {
                     if expirationDate >= Date() {
                         Text("Expires at \(expirationString)")
                             .foregroundColor(Color("ValidGreen"))
@@ -297,27 +244,14 @@ struct RenterAttributeView: View {
                         .foregroundColor(Color("InvalidRed"))
                 }
             case .dob:
-                Text(dobString ?? renter.dateOfBirth)
-                    .foregroundColor(Color("TextBlackSecondary"))
-            }
-        }
-        .font(.title3)
-        .task { @BackgroundActor in
-            if let expirationString = renter.studentEmailExpiration {
-                let expirationDate = VeygoDateStandard.shared.YYYYMMDDformator.date(from: expirationString)
-                await MainActor.run {
-                    self.expirationString = expirationString
-                    self.expirationDate = expirationDate
+                if let dobDate = dateFromYYYYMMDD(renter.dateOfBirth) {
+                    Text(Self.displayFormatter.string(from: dobDate))
+                        .foregroundColor(Color("TextBlackSecondary"))
+                } else {
+                    Text(renter.dateOfBirth)        // Fallback to raw string if parsing fails
+                        .foregroundColor(Color("TextBlackSecondary"))
                 }
             }
-            let dobDate = VeygoDateStandard.shared.YYYYMMDDformator.date(from: renter.dateOfBirth)
-            let dobString = dobDate.map { VeygoDateStandard.shared.standardDateFormator.string(from: $0) }
-            if let dobString {
-                await MainActor.run {
-                    self.dobString = dobString
-                }
-            }
-        }
+        }.font(.title3)
     }
 }
-
