@@ -8,13 +8,18 @@
 import SwiftUI
 
 public struct SettingView: View {
-    /// Navigation path for back‑tracking through nested setting pages.
+    
+    @State private var showAlert: Bool = false
+    @State private var alertMessage: String = ""
+    
     @State private var path: [Destination] = []
     
     @AppStorage("token") private var token: String = ""
     @AppStorage("user_id") private var userId: Int = 0
     
     @EnvironmentObject private var session: AdminSession
+    
+    @State private var emailIsValid: Bool = false
     
     public var body: some View {
         NavigationStack(path: $path) {
@@ -31,7 +36,7 @@ public struct SettingView: View {
                 
                 Section() {
                     NavigationLink("Verify Phone Number", value: Destination.phone)
-                    NavigationLink(session.user?.emailIsValid() ?? false ? "Verify Email" : "Verify Email to Continue", value: Destination.email)
+                    NavigationLink(emailIsValid ? "Verify Email" : "Verify Email to Continue", value: Destination.email)
                 }
                 .listRowBackground(Color("CardBG"))
                 
@@ -41,30 +46,10 @@ public struct SettingView: View {
                 }
                 .listRowBackground(Color("CardBG"))
                 
-                // Stand‑alone “Log Out” action
+                // Stand‑alone “Log Out” action
                 Button(role: .destructive) {
                     Task {
-                        let request = await veygoCurlRequest(url: "/api/v1/user/remove-token", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-                        do {
-                            let (_, response) = try await URLSession.shared.data(for: request)
-                            guard let httpResponse = response as? HTTPURLResponse else {
-                                print("Invalid server response.")
-                                return
-                            }
-                            switch httpResponse.statusCode {
-                            case 200:
-                                await MainActor.run {
-                                    token = ""
-                                    userId = 0
-                                    self.session.user = nil
-                                }
-                                print("🧼 Token cleared")
-                            default:
-                                print("Error logging out, status code: \(httpResponse.statusCode)")
-                            }
-                        } catch {
-                            print("Logout failed with error: \(error.localizedDescription)")
-                        }
+                        await logout()
                     }
                 } label: {
                     Text("Log Out")
@@ -84,8 +69,60 @@ public struct SettingView: View {
             }
             .navigationTitle("Settings")
         }
+        .onAppear {
+            Task { @BackgroundActor in
+                if let user = await session.user {
+                    let isValid = user.emailIsValid
+                    await MainActor.run { emailIsValid = isValid }
+                } else {
+                    await MainActor.run { emailIsValid = false }
+                }
+            }
+        }
+        .onChange(of: session.user) { _, newUser in
+            Task { @BackgroundActor in
+                if let user = newUser {
+                    let isValid = user.emailIsValid
+                    await MainActor.run { emailIsValid = isValid }
+                } else {
+                    await MainActor.run { emailIsValid = false }
+                }
+            }
+        }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
+    }
+    
+    @BackgroundActor func logout() async {
+        let request = veygoCurlRequest(url: "/api/v1/user/remove-token", method: "GET", headers: ["auth": "\(await token)$\(await userId)"])
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                await MainActor.run {
+                    self.alertMessage = "Invalid server response."
+                    self.showAlert = true
+                }
+                return
+            }
+            switch httpResponse.statusCode {
+            case 200:
+                await MainActor.run {
+                    token = ""
+                    userId = 0
+                    self.session.user = nil
+                }
+            default:
+                await MainActor.run {
+                    self.alertMessage = "Error logging out, status code: \(httpResponse.statusCode)"
+                    self.showAlert = true
+                }
+            }
+        } catch {
+            await MainActor.run {
+                self.alertMessage = "Something went wrong: \(error.localizedDescription)"
+                self.showAlert = true
+            }
+        }
     }
 }
 
@@ -158,3 +195,4 @@ private struct LicenseView: View {
         .navigationTitle("License")
     }
 }
+

@@ -16,10 +16,11 @@ struct TaxView: View {
     @AppStorage("token") private var token: String = ""
     @AppStorage("user_id") private var userId: Int = 0
     
-    @Binding var taxes: [Tax]
+    @Binding var taxes: [TaxViewModel]
     @State private var searchText: String = ""
     
-    @State private var seletedTax: Tax.ID? = nil
+    @State private var selectedTax: Tax.ID?
+    @State private var selectedTaxObj: TaxViewModel?
     
     @State private var showAddTaxView: Bool = false
     
@@ -28,7 +29,7 @@ struct TaxView: View {
     
     @State private var deleteData: Bool = false
     
-    private var filteredTaxes: [Tax] {
+    private var filteredTaxes: [TaxViewModel] {
         if searchText.isEmpty { return taxes }
         return taxes.filter {
             $0.name.localizedCaseInsensitiveContains(searchText)
@@ -37,7 +38,7 @@ struct TaxView: View {
     
     var body: some View {
         NavigationSplitView {
-            List(filteredTaxes, selection: $seletedTax) { tax in
+            List(filteredTaxes, selection: $selectedTax) { tax in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(tax.name)
                         .font(.headline)
@@ -64,10 +65,18 @@ struct TaxView: View {
                     }
                 }
             }
+            .task(id: selectedTax) {
+                if let taxId = selectedTax,
+                   let tax = taxes.getItemBy(id: taxId) {
+                    await MainActor.run {
+                        selectedTaxObj = tax
+                    }
+                }
+            }
         } detail: {
             ZStack {
                 Color("MainBG").ignoresSafeArea()
-                if let taxID = seletedTax, let tax = taxes.getItemBy(id: taxID) {
+                if let tax = selectedTaxObj {
                     List {
                         Text("\(tax.name)")
                             .foregroundColor(Color("TextBlackPrimary"))
@@ -125,7 +134,7 @@ struct TaxView: View {
                     TextInputField(placeholder: "Tax Rate", text: $newTaxRate, endingString: "%")
                 }
                 .frame(minWidth: 200, maxWidth: 320)
-                .navigationTitle("New Tax / Surcharge")
+                .navigationTitle("New Tax")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -156,7 +165,7 @@ struct TaxView: View {
         }
     }
     
-    @APIQueueActor func refreshTaxes() {
+    @BackgroundActor func refreshTaxes() {
         Task {
             let token = await token
             let userId = await userId
@@ -182,20 +191,21 @@ struct TaxView: View {
                 switch httpResponse.statusCode {
                 case 200:
                     let newToken = extractToken(from: response) ?? ""
-                    if !newToken.isEmpty && newToken != token {
-                        await MainActor.run {
-                            self.token = newToken
-                        }
-                    }
+
                     let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                    if let taxesData = responseJSON?["taxes"],
-                       let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData) {
-                        await MainActor.run {
-                            if let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
-                                deleteData = false
-                                taxes = decodedTaxes
-                            }
+                    let taxesData = responseJSON?["taxes"]
+                    let taxesJSONArray = taxesData.flatMap { try? JSONSerialization.data(withJSONObject: $0) }
+                    let decodedTaxes = taxesJSONArray.flatMap { try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: $0) }
+
+                    await MainActor.run {
+                        self.token = newToken
+                        guard let decodedTaxes else {
+                            self.alertMessage = "Failed to parse taxes."
+                            self.showAlert = true
+                            return
                         }
+                        self.deleteData = false
+                        self.taxes = decodedTaxes.map(TaxViewModel.init)
                     }
                 case 401:
                     await MainActor.run {
@@ -220,4 +230,3 @@ struct TaxView: View {
         }
     }
 }
-

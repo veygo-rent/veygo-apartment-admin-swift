@@ -85,8 +85,7 @@ struct LoginView: View {
         .background(Color("MainBG").ignoresSafeArea(.all))
     }
     
-    @APIQueueActor
-    func loginUser() {
+    @BackgroundActor func loginUser() {
         Task {
             let body: [String: String] = await ["email": email, "password": password]
             guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
@@ -119,15 +118,17 @@ struct LoginView: View {
                 case 200:
                     let newToken = extractToken(from: response) ?? ""
                     let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                    if let renterData = responseJSON?["admin"],
-                       let renterJSON = try? JSONSerialization.data(withJSONObject: renterData) {
-                        await MainActor.run {
-                            if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
-                                self.session.user = decodedUser
-                                self.token = newToken
-                                self.userId = decodedUser.id
-                            }
+                    let renterData = responseJSON?["admin"]
+                    let renterJSONArray = renterData.flatMap { try? JSONSerialization.data(withJSONObject: $0) }
+                    let decodedUser = renterJSONArray.flatMap { try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: $0) }
+                    await MainActor.run {
+                        self.token = newToken
+                        guard let decodedUser else {
+                            alertMessage = "Failed to parse renters."
+                            showAlert = true
+                            return
                         }
+                        session.user = decodedUser
                     }
                 case 401:
                     await MainActor.run {
@@ -154,3 +155,4 @@ struct LoginView: View {
 #Preview {
     LoginView()
 }
+

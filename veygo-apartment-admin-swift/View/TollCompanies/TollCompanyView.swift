@@ -16,7 +16,7 @@ struct TollCompanyView: View {
     @AppStorage("token") private var token: String = ""
     @AppStorage("user_id") private var userId: Int = 0
     
-    @Binding var tollCompanies: [TransponderCompany]
+    @Binding var tollCompanies: [TransponderCompanyViewModel]
     @State private var searchText: String = ""
     
     @State private var seletedTollCompany: TransponderCompany.ID? = nil
@@ -28,7 +28,7 @@ struct TollCompanyView: View {
     
     @State private var deleteData: Bool = false
     
-    private var filteredTollCompanies: [TransponderCompany] {
+    private var filteredTollCompanies: [TransponderCompanyViewModel] {
         if searchText.isEmpty { return tollCompanies }
         return tollCompanies.filter {
             $0.name.localizedCaseInsensitiveContains(searchText)
@@ -201,7 +201,7 @@ struct TollCompanyView: View {
         }
     }
     
-    @APIQueueActor func refreshTollCompanies() {
+    @BackgroundActor func refreshTollCompanies() {
         Task {
             let token = await token
             let userId = await userId
@@ -227,20 +227,21 @@ struct TollCompanyView: View {
                 switch httpResponse.statusCode {
                 case 200:
                     let newToken = extractToken(from: response) ?? ""
-                    if !newToken.isEmpty && newToken != token {
-                        await MainActor.run {
-                            self.token = newToken
-                        }
-                    }
+
                     let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                    if let tcsData = responseJSON?["transponder_companies"],
-                       let tcsJSONArray = try? JSONSerialization.data(withJSONObject: tcsData) {
-                        await MainActor.run {
-                            if let decodedTCs = try? VeygoJsonStandard.shared.decoder.decode([TransponderCompany].self, from: tcsJSONArray) {
-                                deleteData = false
-                                tollCompanies = decodedTCs
-                            }
+                    let tcsData = responseJSON?["transponder_companies"]
+                    let tcsJSONArray = tcsData.flatMap { try? JSONSerialization.data(withJSONObject: $0) }
+                    let decodedTCs = tcsJSONArray.flatMap { try? VeygoJsonStandard.shared.decoder.decode([TransponderCompany].self, from: $0) }
+
+                    await MainActor.run {
+                        self.token = newToken
+                        guard let decodedTCs else {
+                            self.alertMessage = "Failed to parse toll companies."
+                            self.showAlert = true
+                            return
                         }
+                        self.deleteData = false
+                        self.tollCompanies = decodedTCs.map(TransponderCompanyViewModel.init)
                     }
                 case 401:
                     await MainActor.run {
@@ -265,4 +266,3 @@ struct TollCompanyView: View {
         }
     }
 }
-
