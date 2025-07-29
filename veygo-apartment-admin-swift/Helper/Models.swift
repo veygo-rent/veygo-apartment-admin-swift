@@ -54,7 +54,7 @@ enum TransactionType: String, Codable {
     case cash = "Cash"
 }
 
-struct PublishRenter: Identifiable, Equatable, Codable {
+nonisolated struct PublishRenter: Identifiable, Equatable, Codable {
     var id: Int
     var name: String
     var studentEmail: String

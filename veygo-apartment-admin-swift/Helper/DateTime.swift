@@ -7,10 +7,10 @@
 
 import Foundation
 
-public func dateFromYYYYMMDD(_ raw: String) -> Date? {
+nonisolated public func dateFromYYYYMMDD(_ raw: String) -> Date? {
     // Re-use the same formatter for every call
     struct Static {
-        static let formatter: DateFormatter = {
+        nonisolated static let formatter: DateFormatter = {
             let f = DateFormatter()
             f.dateFormat = "yyyy-MM-dd"
             f.timeZone = TimeZone(secondsFromGMT: 0)

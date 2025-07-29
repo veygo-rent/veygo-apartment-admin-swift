@@ -60,7 +60,11 @@ struct LoginView: View {
                         alertMessage = "Please enter your password"
                         showAlert = true
                     } else {
-                        loginUser()
+                        Task {
+                            await ApiCallActor.shared.appendApi { token, userId in
+                                await loginUserAsync()
+                            }
+                        }
                     }
                 }
                 .alert(isPresented: $showAlert) {
@@ -85,60 +89,70 @@ struct LoginView: View {
         .background(Color("MainBG").ignoresSafeArea(.all))
     }
 
-    func loginUser() {
-        let body: [String: String] = ["email": email, "password": password]
-        let jsonData = try? JSONSerialization.data(withJSONObject: body)
-        
-        let request = veygoCurlRequest(url: "/api/v1/admin/login", method: "POST", body: jsonData)
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                DispatchQueue.main.async {
-                    alertMessage = "Network error: \(error.localizedDescription)"
+    @ApiCallActor func loginUserAsync() async -> ApiTaskResponse {
+        do {
+            let body = await ["email": email, "password": password]
+            let jsonData = try JSONSerialization.data(withJSONObject: body)
+            
+            let request = veygoCurlRequest(url: "/api/v1/admin/login", method: "POST", body: jsonData)
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                await MainActor.run {
+                    alertMessage = "Server Error: Invalid protocol"
                     showAlert = true
                 }
-                return
+                return .doNothing
             }
-
-            guard let httpResponse = response as? HTTPURLResponse, let data = data,
-            httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                DispatchQueue.main.async {
-                    alertMessage = "Invalid server response."
+            
+            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                await MainActor.run {
+                    alertMessage = "Server Error: Invalid content"
                     showAlert = true
                 }
-                return
+                return .doNothing
             }
-
-            if httpResponse.statusCode == 200 {
-                // Update AppStorage
-                DispatchQueue.main.async {
-                    self.token = extractToken(from: response)!
+            
+            switch httpResponse.statusCode {
+            case 200:
+                nonisolated struct LoginSuccessBody: Decodable {
+                    let admin: PublishRenter
                 }
-                let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let renterData = responseJSON?["admin"],
-                   let renterJSON = try? JSONSerialization.data(withJSONObject: renterData) {
-                    DispatchQueue.main.async {
-                        if let decodedUser = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: renterJSON) {
-                            self.userId = decodedUser.id
-                            print("\nLogin successful: \(self.token) \(decodedUser.id)\n")
-                            self.session.user = decodedUser
-                        }
+                
+                let token = extractToken(from: response) ?? ""
+                guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(LoginSuccessBody.self, from: data) else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid content"
+                        showAlert = true
                     }
+                    return .doNothing
                 }
-            } else if httpResponse.statusCode == 401 {
-                DispatchQueue.main.async {
-                    alertMessage = "Email or password is incorrect"
+                await MainActor.run {
+                    self.session.user = decodedBody.admin
+                }
+                return .loginSuccessful(userId: decodedBody.admin.id, token: token)
+            case 401:
+                await MainActor.run {
+                    alertMessage = "Invalid email or password"
                     showAlert = true
                 }
-            } else {
-                DispatchQueue.main.async {
-                    alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
+                return .doNothing
+            default:
+                await MainActor.run {
+                    alertMessage = "Unrecognized response, make sure you are running the latest version"
                     showAlert = true
                 }
+                return .doNothing
             }
-        }.resume()
+        } catch {
+            await MainActor.run {
+                alertMessage = "Internal Error: \(error.localizedDescription)"
+                showAlert = true
+            }
+            return .doNothing
+        }
     }
-
 }
 
 #Preview {
