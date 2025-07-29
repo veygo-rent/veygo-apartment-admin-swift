@@ -111,7 +111,9 @@ struct LoginView: View {
 
             if httpResponse.statusCode == 200 {
                 // Update AppStorage
-                self.token = extractToken(from: response)!
+                DispatchQueue.main.async {
+                    self.token = extractToken(from: response)!
+                }
                 let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 if let renterData = responseJSON?["admin"],
                    let renterJSON = try? JSONSerialization.data(withJSONObject: renterData) {

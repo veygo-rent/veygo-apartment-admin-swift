@@ -51,10 +51,10 @@ public struct SettingView: View {
                             return
                         }
                         if httpResponse.statusCode == 200 {
-                            token = ""
-                            userId = 0
                             DispatchQueue.main.async {
                                 // Update UserSession
+                                token = ""
+                                userId = 0
                                 self.session.user = nil
                             }
                             print("🧼 Token cleared")
