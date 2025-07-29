@@ -5,8 +5,8 @@
 //  Created by Shenghong Zhou on 6/7/25.
 //
 
+@preconcurrency import Stripe
 import SwiftUI
-import Stripe
 
 @main
 struct veygo_apartment_admin_swift: App {
