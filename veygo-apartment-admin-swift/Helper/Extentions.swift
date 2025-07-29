@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import SwiftUI
 internal import Combine
 
 extension Array where Element: Identifiable, Element.ID == Int {
@@ -53,7 +52,4 @@ protocol HasName {
 
 class AdminSession: ObservableObject {
     @Published var user: PublishRenter? = nil
-    
-    @AppStorage("token") var token: String = ""
-    @AppStorage("user_id") var userId: Int = 0
 }
