@@ -48,7 +48,9 @@ struct TollCompanyView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         Task {
-                            await refreshTollCompanies()
+                            await ApiCallActor.shared.appendApi { token, userId in
+                                await refreshTollCompaniesAsync(token, userId)
+                            }
                         }
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
@@ -147,7 +149,9 @@ struct TollCompanyView: View {
         }
         .onAppear {
             Task {
-                await refreshTollCompanies()
+                await ApiCallActor.shared.appendApi { token, userId in
+                    await refreshTollCompaniesAsync(token, userId)
+                }
             }
         }
         .scrollContentBackground(.hidden)
@@ -180,7 +184,9 @@ struct TollCompanyView: View {
                             // Save action here
                             // Ends here
                             Task {
-                                await refreshTollCompanies()
+                                await ApiCallActor.shared.appendApi { token, userId in
+                                    await refreshTollCompaniesAsync(token, userId)
+                                }
                             }
                         } label: {
                             Image(systemName: "checkmark")
@@ -193,50 +199,74 @@ struct TollCompanyView: View {
         }
     }
     
-    func refreshTollCompanies() async {
-        let request = veygoCurlRequest(url: "/api/v1/toll/get-company", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-
+    @ApiCallActor func refreshTollCompaniesAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                await MainActor.run {
-                    alertMessage = "Invalid server response."
-                    showAlert = true
-                }
-                return
-            }
-            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                print("Unexpected Content-Type")
-                throw URLError(.cannotParseResponse)
-            }
-
-            if httpResponse.statusCode == 200 {
-                self.token = extractToken(from: response)!
-                let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let tcsData = responseJSON?["transponder_companies"],
-                   let tcsJSONArray = try? JSONSerialization.data(withJSONObject: tcsData),
-                   let decodedTCs = try? VeygoJsonStandard.shared.decoder.decode([TransponderCompany].self, from: tcsJSONArray) {
+            if !token.isEmpty && userId > 0 {
+                let request = veygoCurlRequest(url: "/api/v1/toll/get-company", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
                     await MainActor.run {
-                        tollCompanies = decodedTCs
+                        alertMessage = "Server Error: Invalid protocol"
+                        showAlert = true
                     }
+                    return .doNothing
                 }
-            } else if httpResponse.statusCode == 401 {
-                await MainActor.run {
-                    alertMessage = "Reverify login status failed"
-                    showAlert = true
+                
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid content"
+                        showAlert = true
+                    }
+                    return .doNothing
                 }
-            } else {
-                await MainActor.run {
-                    alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                    showAlert = true
+                
+                switch httpResponse.statusCode {
+                case 200:
+                    nonisolated struct FetchSuccessBody: Decodable {
+                        let transponderCompanies: [TransponderCompany]
+                    }
+                    
+                    let token = extractToken(from: response) ?? ""
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                        await MainActor.run {
+                            alertMessage = "Server Error: Invalid content"
+                            showAlert = true
+                        }
+                        return .doNothing
+                    }
+                    await MainActor.run {
+                        self.tollCompanies = decodedBody.transponderCompanies
+                    }
+                    return .renewSuccessful(token: token)
+                case 401:
+                    await MainActor.run {
+                        alertMessage = "Token expired, please login again"
+                        showAlert = true
+                    }
+                    return .clearUser
+                case 403:
+                    let token = extractToken(from: response) ?? ""
+                    await MainActor.run {
+                        alertMessage = "No admin access, please login as an admin"
+                        showAlert = true
+                    }
+                    return .renewSuccessful(token: token)
+                default:
+                    await MainActor.run {
+                        alertMessage = "Unrecognized response, make sure you are running the latest version"
+                        showAlert = true
+                    }
+                    return .doNothing
                 }
             }
+            return .doNothing
         } catch {
             await MainActor.run {
-                alertMessage = "Network error: \(error.localizedDescription)"
+                alertMessage = "Internal Error: \(error.localizedDescription)"
                 showAlert = true
             }
+            return .doNothing
         }
     }
 }

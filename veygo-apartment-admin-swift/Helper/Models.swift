@@ -119,7 +119,7 @@ struct Apartment: Identifiable, Equatable, Codable, HasName {
     var taxes: [Int?]
 }
 
-struct ApartmentNew: Equatable, Codable, HasName {
+nonisolated struct ApartmentNew: Equatable, Codable, HasName {
     var name: String
     var email: String
     var phone: String

@@ -13,8 +13,6 @@ public struct RenterView: View {
     @State private var alertMessage: String = ""
     
     @EnvironmentObject private var session: AdminSession
-    @AppStorage("token") private var token: String = ""
-    @AppStorage("user_id") private var userId: Int = 0
     
     @Binding var renters: [PublishRenter]
     @State private var searchText: String = ""
@@ -55,7 +53,9 @@ public struct RenterView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         Task {
-                            await refreshRenters()
+                            await ApiCallActor.shared.appendApi { token, userId in
+                                await refreshRentersAsync(token, userId)
+                            }
                         }
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
@@ -72,52 +72,83 @@ public struct RenterView: View {
         }
         .onAppear {
             Task {
-                await refreshRenters()
+                await ApiCallActor.shared.appendApi { token, userId in
+                    await refreshRentersAsync(token, userId)
+                }
             }
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
     }
     
-    func refreshRenters() async {
-        let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+    @ApiCallActor func refreshRentersAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                await MainActor.run {
-                    alertMessage = "Invalid server response."
-                    showAlert = true
-                }
-                return
-            }
-
-            if httpResponse.statusCode == 200 {
-                self.token = extractToken(from: response)!
-                let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let renterData = responseJSON?["renters"],
-                   let renterJSONArray = try? JSONSerialization.data(withJSONObject: renterData),
-                   let decodedUser = try? VeygoJsonStandard.shared.decoder.decode([PublishRenter].self, from: renterJSONArray) {
+            if !token.isEmpty && userId > 0 {
+                let request = veygoCurlRequest(url: "/api/v1/user/get-users", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
                     await MainActor.run {
-                        renters = decodedUser
+                        alertMessage = "Server Error: Invalid protocol"
+                        showAlert = true
                     }
+                    return .doNothing
                 }
-            } else if httpResponse.statusCode == 401 {
-                await MainActor.run {
-                    alertMessage = "Reverify login status failed"
-                    showAlert = true
+                
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid content"
+                        showAlert = true
+                    }
+                    return .doNothing
                 }
-            } else {
-                await MainActor.run {
-                    alertMessage = "Unexpected error (code: \(httpResponse.statusCode))."
-                    showAlert = true
+                
+                switch httpResponse.statusCode {
+                case 200:
+                    nonisolated struct FetchSuccessBody: Decodable {
+                        let renters: [PublishRenter]
+                    }
+                    
+                    let token = extractToken(from: response) ?? ""
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                        await MainActor.run {
+                            alertMessage = "Server Error: Invalid content"
+                            showAlert = true
+                        }
+                        return .doNothing
+                    }
+                    await MainActor.run {
+                        self.renters = decodedBody.renters
+                    }
+                    return .renewSuccessful(token: token)
+                case 401:
+                    await MainActor.run {
+                        alertMessage = "Token expired, please login again"
+                        showAlert = true
+                    }
+                    return .clearUser
+                case 403:
+                    let token = extractToken(from: response) ?? ""
+                    await MainActor.run {
+                        alertMessage = "No admin access, please login as an admin"
+                        showAlert = true
+                    }
+                    return .renewSuccessful(token: token)
+                default:
+                    await MainActor.run {
+                        alertMessage = "Unrecognized response, make sure you are running the latest version"
+                        showAlert = true
+                    }
+                    return .doNothing
                 }
             }
+            return .doNothing
         } catch {
             await MainActor.run {
-                alertMessage = "Network error: \(error.localizedDescription)"
+                alertMessage = "Internal Error: \(error.localizedDescription)"
                 showAlert = true
             }
+            return .doNothing
         }
     }
 }

@@ -43,7 +43,7 @@ struct veygo_apartment_admin_swift: App {
         }
     }
     
-    @ApiCallActor func validateTokenAndFetchUser(_ token: String, _ userId: Int) async -> ApiTaskResponse {
+    @ApiCallActor func validateTokenAndFetchUser (_ token: String, _ userId: Int) async -> ApiTaskResponse {
         do {
             if !token.isEmpty && userId > 0 {
                 let request = veygoCurlRequest(url: "/api/v1/admin/retrieve", method: "GET", headers: ["auth": "\(token)$\(userId)"])

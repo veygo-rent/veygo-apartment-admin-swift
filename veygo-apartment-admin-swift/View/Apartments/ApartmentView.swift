@@ -13,8 +13,6 @@ public struct ApartmentView: View {
     @State private var alertMessage: String = ""
     
     @EnvironmentObject private var session: AdminSession
-    @AppStorage("token") private var token: String = ""
-    @AppStorage("user_id") private var userId: Int = 0
     
     @Binding var apartments: [Apartment]
     @Binding var taxes: [Tax]
@@ -112,7 +110,9 @@ public struct ApartmentView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         Task {
-                            await refreshApartments()
+                            await ApiCallActor.shared.appendApi { token, userId in
+                                await refreshApartmentsAsync(token, userId)
+                            }
                         }
                     } label: {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
@@ -189,12 +189,11 @@ public struct ApartmentView: View {
         }
         .onAppear {
             Task {
-                await refreshApartments()
-                do {
-                    try await refreshTaxes()
-                } catch {
-                    alertMessage = "Error: \(error.localizedDescription)"
-                    showAlert = true
+                await ApiCallActor.shared.appendApi { token, userId in
+                    await refreshApartmentsAsync(token, userId)
+                }
+                await ApiCallActor.shared.appendApi { token, userId in
+                    await refreshTaxesAsync(token, userId)
                 }
             }
         }
@@ -408,12 +407,9 @@ public struct ApartmentView: View {
                                 showAddApartmentView = false
                                 // Save action here
                                 Task {
-                                    await addApartment()
-                                }
-                                // Ends here
-                                Task {
-                                    await refreshApartments()
-                                    uniId = universities.first?.id ?? 0
+                                    await ApiCallActor.shared.appendApi { token, userId in
+                                        await addApartmentAsync(token, userId)
+                                    }
                                 }
                             } label: {
                                 Image(systemName: "checkmark")
@@ -439,153 +435,243 @@ public struct ApartmentView: View {
         }
     }
     
-    func refreshApartments() async {
-        let request = veygoCurlRequest(url: "/api/v1/apartment/get-all-apartments", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+    @ApiCallActor func refreshApartmentsAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                alertMessage = "Parsing HTTPURLResponse Error"
-                showAlert = true
-                return
-            }
-            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-                showAlert = true
-                return
-            }
-            
-            if httpResponse.statusCode == 200 {
-                self.token = extractToken(from: response)!
-                let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let apartmentsData = responseJSON?["apartments"],
-                   let apartmentsJSONArray = try? JSONSerialization.data(withJSONObject: apartmentsData),
-                   let decodedApartments = try? VeygoJsonStandard.shared.decoder.decode([Apartment].self, from: apartmentsJSONArray) {
-                    DispatchQueue.main.async {
-                        self.apartments = decodedApartments
+            if !token.isEmpty && userId > 0 {
+                let request = veygoCurlRequest(url: "/api/v1/apartment/get-all-apartments", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid protocol"
+                        showAlert = true
                     }
+                    return .doNothing
                 }
-            } else {
+                
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid content"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                switch httpResponse.statusCode {
+                case 200:
+                    nonisolated struct FetchSuccessBody: Decodable {
+                        let apartments: [Apartment]
+                    }
+                    
+                    let token = extractToken(from: response) ?? ""
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                        await MainActor.run {
+                            alertMessage = "Server Error: Invalid content"
+                            showAlert = true
+                        }
+                        return .doNothing
+                    }
+                    await MainActor.run {
+                        self.apartments = decodedBody.apartments
+                    }
+                    return .renewSuccessful(token: token)
+                case 401:
+                    await MainActor.run {
+                        alertMessage = "Token expired, please login again"
+                        showAlert = true
+                    }
+                    return .clearUser
+                case 403:
+                    let token = extractToken(from: response) ?? ""
+                    await MainActor.run {
+                        alertMessage = "No admin access, please login as an admin"
+                        showAlert = true
+                    }
+                    return .renewSuccessful(token: token)
+                default:
+                    await MainActor.run {
+                        alertMessage = "Unrecognized response, make sure you are running the latest version"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+            }
+            return .doNothing
+        } catch {
+            await MainActor.run {
+                alertMessage = "Internal Error: \(error.localizedDescription)"
                 showAlert = true
-                alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
             }
-        } catch let urlError as URLError {
-            // Show: "Bad Internet Connection"
-            showAlert = true
-            alertMessage = "Bad Internet Connection: \(urlError.localizedDescription)"
-        } catch {
-            // Catch-all
-            showAlert = true
-            alertMessage = "Something went wrong: \(error.localizedDescription)"
+            return .doNothing
         }
     }
     
-    func refreshTaxes() async throws {
-        let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            alertMessage = "Parsing HTTPURLResponse Error"
-            showAlert = true
-            return
-        }
-        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-            alertMessage = "Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")"
-            showAlert = true
-            return
-        }
-        
-        if httpResponse.statusCode == 200 {
-            self.token = extractToken(from: response)!
-            let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            if let taxesData = responseJSON?["taxes"],
-               let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
-               let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
-                DispatchQueue.main.async {
-                    self.taxes = decodedTaxes
+    @ApiCallActor func refreshTaxesAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
+        do {
+            if !token.isEmpty && userId > 0 {
+                let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid protocol"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid content"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                switch httpResponse.statusCode {
+                case 200:
+                    nonisolated struct FetchSuccessBody: Decodable {
+                        let taxes: [Tax]
+                    }
+                    
+                    let token = extractToken(from: response) ?? ""
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                        await MainActor.run {
+                            alertMessage = "Server Error: Invalid content"
+                            showAlert = true
+                        }
+                        return .doNothing
+                    }
+                    await MainActor.run {
+                        self.taxes = decodedBody.taxes
+                    }
+                    return .renewSuccessful(token: token)
+                case 401:
+                    await MainActor.run {
+                        alertMessage = "Token expired, please login again"
+                        showAlert = true
+                    }
+                    return .clearUser
+                case 403:
+                    let token = extractToken(from: response) ?? ""
+                    await MainActor.run {
+                        alertMessage = "No admin access, please login as an admin"
+                        showAlert = true
+                    }
+                    return .renewSuccessful(token: token)
+                default:
+                    await MainActor.run {
+                        alertMessage = "Unrecognized response, make sure you are running the latest version"
+                        showAlert = true
+                    }
+                    return .doNothing
                 }
             }
-        } else {
-            showAlert = true
-            alertMessage = "Wrong Status Code: \(httpResponse.statusCode)"
+            return .doNothing
+        } catch {
+            await MainActor.run {
+                alertMessage = "Internal Error: \(error.localizedDescription)"
+                showAlert = true
+            }
+            return .doNothing
         }
     }
     
-    func addApartment() async {
-        let payload = ApartmentNew(
-            name: newAptName,
-            email: newAptEmail,
-            phone: newAptPhone,
-            address: newAptAddress,
-            acceptedSchoolEmailDomain: acceptedSchoolEmailDomain,
-            freeTierHours: freeTierHoursDouble,
-            freeTierRate: 0.00,
-            silverTierHours: silverTierHoursDouble,
-            silverTierRate: silverTierRateDouble,
-            goldTierHours: goldTierHoursDouble,
-            goldTierRate: goldTierRateDouble,
-            platinumTierHours: platinumTierHoursDouble,
-            platinumTierRate: platinumTierRateDouble,
-            durationRate: durationRateDouble,
-            liabilityProtectionRate: liabilityProtectionRateDouble,
-            pcdwProtectionRate: pcdwProtectionRateDouble,
-            pcdwExtProtectionRate: pcdwExtProtectionRateDouble,
-            rsaProtectionRate: rsaProtectionRateDouble,
-            paiProtectionRate: paiProtectionRateDouble,
-            isOperating: isOperating,
-            isPublic: isPublic,
-            uniId: uniId ?? 1,
-            taxes: aptTaxes
-        )
+    @ApiCallActor func addApartmentAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
         do {
-            let jsonData = try VeygoJsonStandard.shared.encoder.encode(payload)
-            // You can proceed to use jsonData as needed
-            let request = veygoCurlRequest(url: "/api/v1/apartment/add-apartment", method: "POST", headers: ["auth": "\(token)$\(userId)"], body: jsonData)
-            let (_, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse: HTTPURLResponse = response as? HTTPURLResponse else {
-                print("Parsing HTTPURLResponse Error")
-                throw URLError(.cannotConnectToHost)
+            if !token.isEmpty && userId > 0 {
+                let payload = await ApartmentNew(
+                    name: newAptName,
+                    email: newAptEmail,
+                    phone: newAptPhone,
+                    address: newAptAddress,
+                    acceptedSchoolEmailDomain: acceptedSchoolEmailDomain,
+                    freeTierHours: freeTierHoursDouble,
+                    freeTierRate: 0.00,
+                    silverTierHours: silverTierHoursDouble,
+                    silverTierRate: silverTierRateDouble,
+                    goldTierHours: goldTierHoursDouble,
+                    goldTierRate: goldTierRateDouble,
+                    platinumTierHours: platinumTierHoursDouble,
+                    platinumTierRate: platinumTierRateDouble,
+                    durationRate: durationRateDouble,
+                    liabilityProtectionRate: liabilityProtectionRateDouble,
+                    pcdwProtectionRate: pcdwProtectionRateDouble,
+                    pcdwExtProtectionRate: pcdwExtProtectionRateDouble,
+                    rsaProtectionRate: rsaProtectionRateDouble,
+                    paiProtectionRate: paiProtectionRateDouble,
+                    isOperating: isOperating,
+                    isPublic: isPublic,
+                    uniId: uniId ?? 1,
+                    taxes: aptTaxes
+                )
+                
+                let jsonData = try VeygoJsonStandard.shared.encoder.encode(payload)
+                let request = veygoCurlRequest(url: "/api/v1/apartment/add-apartment", method: "POST", headers: ["auth": "\(token)$\(userId)"], body: jsonData)
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid protocol"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid content"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                switch httpResponse.statusCode {
+                case 201:
+                    nonisolated struct FetchSuccessBody: Decodable {
+                        let apartment: Apartment
+                    }
+                    
+                    let token = extractToken(from: response) ?? ""
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                        await MainActor.run {
+                            alertMessage = "Server Error: Invalid content"
+                            showAlert = true
+                        }
+                        return .doNothing
+                    }
+                    await MainActor.run {
+                        self.apartments.append(decodedBody.apartment)
+                    }
+                    return .renewSuccessful(token: token)
+                case 401:
+                    await MainActor.run {
+                        alertMessage = "Token expired, please login again"
+                        showAlert = true
+                    }
+                    return .clearUser
+                case 403:
+                    let token = extractToken(from: response) ?? ""
+                    await MainActor.run {
+                        alertMessage = "No admin access, please login as an admin"
+                        showAlert = true
+                    }
+                    return .renewSuccessful(token: token)
+                default:
+                    await MainActor.run {
+                        alertMessage = "Unrecognized response, make sure you are running the latest version"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
             }
-            
-            guard httpResponse.statusCode == 201 else {
-                print("Wrong Status Code: \(httpResponse.statusCode)")
-                throw URLError(.badServerResponse)
-            }
-            
-            guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                print("Wrong Content Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "N/A")")
-                throw URLError(.cannotDecodeRawData)
-            }
-            
-            newAptName = ""
-            newAptEmail = ""
-            newAptPhone = ""
-            newAptAddress = ""
-            acceptedSchoolEmailDomain = ""
-            freeTierHours = ""
-            silverTierHours = ""
-            silverTierRate = ""
-            goldTierHours = ""
-            goldTierRate = ""
-            platinumTierHours = ""
-            platinumTierRate = ""
-            durationRate = ""
-            liabilityProtectionRate = ""
-            pcdwProtectionRate = ""
-            pcdwExtProtectionRate = ""
-            rsaProtectionRate = ""
-            paiProtectionRate = ""
-            isOperating = true
-            isPublic = true
-            aptTaxes = []
-            aptTaxSearch = ""
-            
-            await refreshApartments()
+            return .doNothing
         } catch {
-            alertMessage = "\(error.localizedDescription)"
-            showAlert = true
-            return
+            await MainActor.run {
+                alertMessage = "Internal Error: \(error.localizedDescription)"
+                showAlert = true
+            }
+            return .doNothing
         }
     }
     

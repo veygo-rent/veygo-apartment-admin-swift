@@ -13,8 +13,6 @@ struct TaxView: View {
     @State private var alertMessage: String = ""
     
     @EnvironmentObject private var session: AdminSession
-    @AppStorage("token") private var token: String = ""
-    @AppStorage("user_id") private var userId: Int = 0
     
     @Binding var taxes: [Tax]
     @State private var searchText: String = ""
@@ -48,11 +46,8 @@ struct TaxView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         Task {
-                            do {
-                                try await refreshTaxes()
-                            } catch {
-                                alertMessage = "Error: \(error.localizedDescription)"
-                                showAlert = true
+                            await ApiCallActor.shared.appendApi { token, userId in
+                                await refreshTaxesAsync(token, userId)
                             }
                         }
                     } label: {
@@ -107,11 +102,8 @@ struct TaxView: View {
         }
         .onAppear {
             Task {
-                do {
-                    try await refreshTaxes()
-                } catch {
-                    alertMessage = "Error: \(error.localizedDescription)"
-                    showAlert = true
+                await ApiCallActor.shared.appendApi { token, userId in
+                    await refreshTaxesAsync(token, userId)
                 }
             }
         }
@@ -145,11 +137,8 @@ struct TaxView: View {
                             // Save action here
                             // Ends here
                             Task {
-                                do {
-                                    try await refreshTaxes()
-                                } catch {
-                                    alertMessage = "Error: \(error.localizedDescription)"
-                                    showAlert = true
+                                await ApiCallActor.shared.appendApi { token, userId in
+                                    await refreshTaxesAsync(token, userId)
                                 }
                             }
                         } label: {
@@ -163,30 +152,74 @@ struct TaxView: View {
         }
     }
     
-    func refreshTaxes() async throws {
-        let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw URLError(.badServerResponse)
-        }
-        guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-            print("Unexpected Content-Type")
-            throw URLError(.cannotParseResponse)
-        }
-        
-        if httpResponse.statusCode == 200 {
-            self.token = extractToken(from: response)!
-            let responseJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            if let taxesData = responseJSON?["taxes"],
-               let taxesJSONArray = try? JSONSerialization.data(withJSONObject: taxesData),
-               let decodedTaxes = try? VeygoJsonStandard.shared.decoder.decode([Tax].self, from: taxesJSONArray) {
-                DispatchQueue.main.async {
-                    self.taxes = decodedTaxes
+    @ApiCallActor func refreshTaxesAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
+        do {
+            if !token.isEmpty && userId > 0 {
+                let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid protocol"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid content"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                switch httpResponse.statusCode {
+                case 200:
+                    nonisolated struct FetchSuccessBody: Decodable {
+                        let taxes: [Tax]
+                    }
+                    
+                    let token = extractToken(from: response) ?? ""
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                        await MainActor.run {
+                            alertMessage = "Server Error: Invalid content"
+                            showAlert = true
+                        }
+                        return .doNothing
+                    }
+                    await MainActor.run {
+                        self.taxes = decodedBody.taxes
+                    }
+                    return .renewSuccessful(token: token)
+                case 401:
+                    await MainActor.run {
+                        alertMessage = "Token expired, please login again"
+                        showAlert = true
+                    }
+                    return .clearUser
+                case 403:
+                    let token = extractToken(from: response) ?? ""
+                    await MainActor.run {
+                        alertMessage = "No admin access, please login as an admin"
+                        showAlert = true
+                    }
+                    return .renewSuccessful(token: token)
+                default:
+                    await MainActor.run {
+                        alertMessage = "Unrecognized response, make sure you are running the latest version"
+                        showAlert = true
+                    }
+                    return .doNothing
                 }
             }
-        } else {
-            throw NSError(domain: "Server", code: httpResponse.statusCode, userInfo: nil)
+            return .doNothing
+        } catch {
+            await MainActor.run {
+                alertMessage = "Internal Error: \(error.localizedDescription)"
+                showAlert = true
+            }
+            return .doNothing
         }
     }
 }
