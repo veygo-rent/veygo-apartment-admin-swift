@@ -11,11 +11,10 @@ public struct SettingView: View {
     
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
+    @State private var alertTitle: String = ""
+    @State private var clearUserTriggered: Bool = false
     
     @State private var path: [Destination] = []
-    
-    @AppStorage("token") private var token: String = ""
-    @AppStorage("user_id") private var userId: Int = 0
     
     @EnvironmentObject private var session: AdminSession
     
@@ -83,7 +82,8 @@ public struct SettingView: View {
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     await MainActor.run {
-                        alertMessage = "Server Error: Invalid protocol"
+                        alertTitle = "Server Error"
+                        alertMessage = "Invalid protocol"
                         showAlert = true
                     }
                     return .doNothing
@@ -97,12 +97,14 @@ public struct SettingView: View {
                     return .clearUser
                 case 405:
                     await MainActor.run {
-                        alertMessage = "Internal Error: Method not allowed, please contact the developer dev@veygo.rent"
+                        alertTitle = "Internal Error"
+                        alertMessage = "Method not allowed, please contact the developer dev@veygo.rent"
                         showAlert = true
                     }
                     return .doNothing
                 default:
                     await MainActor.run {
+                        alertTitle = "Application Error"
                         alertMessage = "Unrecognized response, make sure you are running the latest version"
                         showAlert = true
                     }
@@ -112,7 +114,8 @@ public struct SettingView: View {
             return .doNothing
         } catch {
             await MainActor.run {
-                alertMessage = "Internal Error: \(error.localizedDescription)"
+                alertTitle = "Internal Error"
+                alertMessage = "\(error.localizedDescription)"
                 showAlert = true
             }
             return .doNothing

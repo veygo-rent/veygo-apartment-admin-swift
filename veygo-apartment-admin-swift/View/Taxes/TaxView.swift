@@ -197,7 +197,7 @@ struct TaxView: View {
                             alertMessage = "Invalid content"
                             showAlert = true
                         }
-                        return .doNothing
+                        return .renewSuccessful(token: token)
                     }
                     await MainActor.run {
                         self.taxes = decodedBody.taxes
@@ -217,8 +217,9 @@ struct TaxView: View {
                         alertTitle = "Access Denied"
                         alertMessage = "No admin access, please login as an admin"
                         showAlert = true
+                        clearUserTriggered = true
                     }
-                    return .renewSuccessful(token: token)
+                    return .clearUser
                 case 405:
                     await MainActor.run {
                         alertTitle = "Internal Error"

@@ -11,6 +11,8 @@ public struct RenterView: View {
     
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
+    @State private var alertTitle: String = ""
+    @State private var clearUserTriggered: Bool = false
     
     @EnvironmentObject private var session: AdminSession
     
@@ -79,6 +81,15 @@ public struct RenterView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
+        .alert(alertTitle, isPresented: $showAlert) {
+            Button("OK") {
+                if clearUserTriggered {
+                    session.user = nil
+                }
+            }
+        } message: {
+            Text(alertMessage)
+        }
     }
     
     @ApiCallActor func refreshRentersAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
@@ -89,7 +100,8 @@ public struct RenterView: View {
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     await MainActor.run {
-                        alertMessage = "Server Error: Invalid protocol"
+                        alertTitle = "Server Error"
+                        alertMessage = "Invalid protocol"
                         showAlert = true
                     }
                     return .doNothing
@@ -97,7 +109,8 @@ public struct RenterView: View {
                 
                 guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
                     await MainActor.run {
-                        alertMessage = "Server Error: Invalid content"
+                        alertTitle = "Server Error"
+                        alertMessage = "Invalid content"
                         showAlert = true
                     }
                     return .doNothing
@@ -112,10 +125,11 @@ public struct RenterView: View {
                     let token = extractToken(from: response) ?? ""
                     guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
                         await MainActor.run {
-                            alertMessage = "Server Error: Invalid content"
+                            alertTitle = "Server Error"
+                            alertMessage = "Invalid content"
                             showAlert = true
                         }
-                        return .doNothing
+                        return .renewSuccessful(token: token)
                     }
                     await MainActor.run {
                         self.renters = decodedBody.renters
@@ -123,27 +137,32 @@ public struct RenterView: View {
                     return .renewSuccessful(token: token)
                 case 401:
                     await MainActor.run {
+                        alertTitle = "Session Expired"
                         alertMessage = "Token expired, please login again"
                         showAlert = true
-                        session.user = nil
+                        clearUserTriggered = true
                     }
                     return .clearUser
                 case 403:
                     let token = extractToken(from: response) ?? ""
                     await MainActor.run {
+                        alertTitle = "Access Denied"
                         alertMessage = "No admin access, please login as an admin"
                         showAlert = true
+                        clearUserTriggered = true
                     }
-                    return .renewSuccessful(token: token)
+                    return .clearUser
                 case 405:
                     await MainActor.run {
-                        alertMessage = "Internal Error: Method not allowed, please contact the developer dev@veygo.rent"
+                        alertTitle = "Internal Error"
+                        alertMessage = "Method not allowed, please contact the developer dev@veygo.rent"
                         showAlert = true
-                        session.user = nil
+                        clearUserTriggered = true
                     }
                     return .clearUser
                 default:
                     await MainActor.run {
+                        alertTitle = "Application Error"
                         alertMessage = "Unrecognized response, make sure you are running the latest version"
                         showAlert = true
                     }
@@ -153,7 +172,8 @@ public struct RenterView: View {
             return .doNothing
         } catch {
             await MainActor.run {
-                alertMessage = "Internal Error: \(error.localizedDescription)"
+                alertTitle = "Internal Error"
+                alertMessage = "\(error.localizedDescription)"
                 showAlert = true
             }
             return .doNothing
