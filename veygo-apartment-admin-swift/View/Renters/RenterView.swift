@@ -144,7 +144,6 @@ public struct RenterView: View {
                     }
                     return .clearUser
                 case 403:
-                    let token = extractToken(from: response) ?? ""
                     await MainActor.run {
                         alertTitle = "Access Denied"
                         alertMessage = "No admin access, please login as an admin"
