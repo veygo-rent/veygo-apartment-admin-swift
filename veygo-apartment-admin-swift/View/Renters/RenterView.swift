@@ -125,6 +125,7 @@ public struct RenterView: View {
                     await MainActor.run {
                         alertMessage = "Token expired, please login again"
                         showAlert = true
+                        session.user = nil
                     }
                     return .clearUser
                 case 403:
@@ -134,6 +135,14 @@ public struct RenterView: View {
                         showAlert = true
                     }
                     return .renewSuccessful(token: token)
+                case 405:
+                    let token = extractToken(from: response) ?? ""
+                    await MainActor.run {
+                        alertMessage = "Internal Error: Method not allowed, please contact the developer dev@veygo.rent"
+                        showAlert = true
+                        session.user = nil
+                    }
+                    return .clearUser
                 default:
                     await MainActor.run {
                         alertMessage = "Unrecognized response, make sure you are running the latest version"

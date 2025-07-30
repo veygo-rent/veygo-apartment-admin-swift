@@ -8,7 +8,10 @@
 import SwiftUI
 
 public struct SettingView: View {
-    /// Navigation path for back‑tracking through nested setting pages.
+    
+    @State private var showAlert: Bool = false
+    @State private var alertMessage: String = ""
+    
     @State private var path: [Destination] = []
     
     @AppStorage("token") private var token: String = ""
@@ -78,8 +81,62 @@ public struct SettingView: View {
             }
             .navigationTitle("Settings")
         }
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text("Error"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+        }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
+    }
+    @ApiCallActor func refreshTollCompaniesAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
+        do {
+            if !token.isEmpty && userId > 0 {
+                let request = veygoCurlRequest(url: "/api/v1/user/remove-token", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid protocol"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        alertMessage = "Server Error: Invalid content"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                switch httpResponse.statusCode {
+                case 200:
+                    await MainActor.run {
+                        session.user = nil
+                    }
+                    return .clearUser
+                case 405:
+                    await MainActor.run {
+                        alertMessage = "Internal Error: Method not allowed, please contact the developer dev@veygo.rent"
+                        showAlert = true
+                    }
+                    return .doNothing
+                default:
+                    await MainActor.run {
+                        alertMessage = "Unrecognized response, make sure you are running the latest version"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+            }
+            return .doNothing
+        } catch {
+            await MainActor.run {
+                alertMessage = "Internal Error: \(error.localizedDescription)"
+                showAlert = true
+            }
+            return .doNothing
+        }
     }
 }
 

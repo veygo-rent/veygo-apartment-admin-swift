@@ -87,6 +87,15 @@ struct veygo_apartment_admin_swift: App {
                     await MainActor.run {
                         alertMessage = "Token expired, please login again"
                         showAlert = true
+                        session.user = nil
+                    }
+                    return .clearUser
+                case 405:
+                    let token = extractToken(from: response) ?? ""
+                    await MainActor.run {
+                        alertMessage = "Internal Error: Method not allowed, please contact the developer dev@veygo.rent"
+                        showAlert = true
+                        session.user = nil
                     }
                     return .clearUser
                 default:

@@ -138,6 +138,14 @@ struct LoginView: View {
                     showAlert = true
                 }
                 return .doNothing
+            case 405:
+                let token = extractToken(from: response) ?? ""
+                await MainActor.run {
+                    alertMessage = "Internal Error: Method not allowed, please contact the developer dev@veygo.rent"
+                    showAlert = true
+                    session.user = nil
+                }
+                return .clearUser
             default:
                 await MainActor.run {
                     alertMessage = "Unrecognized response, make sure you are running the latest version"
