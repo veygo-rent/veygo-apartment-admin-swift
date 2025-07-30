@@ -68,8 +68,14 @@ public struct SettingView: View {
             }
             .navigationTitle("Settings")
         }
-        .alert(isPresented: $showAlert) {
-            Alert(title: Text("Error"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+        .alert(alertTitle, isPresented: $showAlert) {
+            Button("OK") {
+                if clearUserTriggered {
+                    session.user = nil
+                }
+            }
+        } message: {
+            Text(alertMessage)
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
