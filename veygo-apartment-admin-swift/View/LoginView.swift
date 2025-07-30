@@ -17,20 +17,26 @@ enum SignupRoute: Hashable {
 
 struct LoginView: View {
     
+    private enum Field: Hashable {
+        case email
+        case password
+    }
+    
+    @State private var showAlert: Bool = false
+    @State private var alertMessage: String = ""
+    @State private var alertTitle: String = ""
+    @State private var clearUserTriggered: Bool = false
+    
     @State private var email: String = ""
     @State private var password: String = ""
     
     @State private var path = NavigationPath()
     
     @State private var goToResetView = false
-
-    @State private var showAlert = false
-    @State private var alertMessage = ""
-
-    @AppStorage("token") var token: String = ""
-    @AppStorage("user_id") var userId: Int = 0
     
     @EnvironmentObject var session: AdminSession
+    
+    @FocusState private var focusedField: Field?
     
     var body: some View {
         NavigationStack(path: $path) {
@@ -49,16 +55,16 @@ struct LoginView: View {
                     .onChange(of: email) { oldValue, newValue in
                         email = newValue.lowercased()
                     }
+                    .focused($focusedField, equals: .email)
                 Spacer().frame(height: 15)
                 TextInputField(placeholder: "Password", text: $password, isSecure: true)
+                    .focused($focusedField, equals: .password)
                 Spacer().frame(height: 20)
                 PrimaryButton(text: "Login") {
                     if email.isEmpty {
-                        alertMessage = "Please enter your email"
-                        showAlert = true
+                        focusedField = .email
                     } else if password.isEmpty {
-                        alertMessage = "Please enter your password"
-                        showAlert = true
+                        focusedField = .password
                     } else {
                         Task {
                             await ApiCallActor.shared.appendApi { token, userId in
@@ -66,9 +72,6 @@ struct LoginView: View {
                             }
                         }
                     }
-                }
-                .alert(isPresented: $showAlert) {
-                    Alert(title: Text("Login Failed"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
                 }
 
                 Spacer().frame(height: 20)
@@ -87,6 +90,15 @@ struct LoginView: View {
             LegalText()
         }
         .background(Color("MainBG").ignoresSafeArea(.all))
+        .alert(alertTitle, isPresented: $showAlert) {
+            Button("OK") {
+                if clearUserTriggered {
+                    session.user = nil
+                }
+            }
+        } message: {
+            Text(alertMessage)
+        }
     }
 
     @ApiCallActor func loginUserAsync() async -> ApiTaskResponse {
@@ -100,7 +112,8 @@ struct LoginView: View {
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 await MainActor.run {
-                    alertMessage = "Server Error: Invalid protocol"
+                    alertTitle = "Server Error"
+                    alertMessage = "Invalid protocol"
                     showAlert = true
                 }
                 return .doNothing
@@ -108,7 +121,8 @@ struct LoginView: View {
             
             guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
                 await MainActor.run {
-                    alertMessage = "Server Error: Invalid content"
+                    alertTitle = "Server Error"
+                    alertMessage = "Invalid content"
                     showAlert = true
                 }
                 return .doNothing
@@ -123,10 +137,11 @@ struct LoginView: View {
                 let token = extractToken(from: response) ?? ""
                 guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(LoginSuccessBody.self, from: data) else {
                     await MainActor.run {
-                        alertMessage = "Server Error: Invalid content"
+                        alertTitle = "Server Error"
+                        alertMessage = "Invalid content"
                         showAlert = true
                     }
-                    return .doNothing
+                    return .renewSuccessful(token: token)
                 }
                 await MainActor.run {
                     self.session.user = decodedBody.admin
@@ -134,19 +149,23 @@ struct LoginView: View {
                 return .loginSuccessful(userId: decodedBody.admin.id, token: token)
             case 401:
                 await MainActor.run {
-                    alertMessage = "Invalid email or password"
+                    alertTitle = "Login Failed"
+                    alertMessage = "Wrong email or password"
                     showAlert = true
+                    clearUserTriggered = true
                 }
-                return .doNothing
+                return .clearUser
             case 405:
                 await MainActor.run {
-                    alertMessage = "Internal Error: Method not allowed, please contact the developer dev@veygo.rent"
+                    alertTitle = "Internal Error"
+                    alertMessage = "Method not allowed, please contact the developer dev@veygo.rent"
                     showAlert = true
-                    session.user = nil
+                    clearUserTriggered = true
                 }
                 return .clearUser
             default:
                 await MainActor.run {
+                    alertTitle = "Application Error"
                     alertMessage = "Unrecognized response, make sure you are running the latest version"
                     showAlert = true
                 }
@@ -154,7 +173,8 @@ struct LoginView: View {
             }
         } catch {
             await MainActor.run {
-                alertMessage = "Internal Error: \(error.localizedDescription)"
+                alertTitle = "Internal Error"
+                alertMessage = "\(error.localizedDescription)"
                 showAlert = true
             }
             return .doNothing
