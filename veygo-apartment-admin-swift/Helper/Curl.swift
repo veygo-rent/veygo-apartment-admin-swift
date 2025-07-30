@@ -30,7 +30,7 @@ nonisolated public func veygoCurlRequest (url: String, method: String, headers: 
     return request
 }
 
-class VeygoJsonStandard {
+struct VeygoJsonStandard {
     nonisolated static let shared = VeygoJsonStandard()
     nonisolated let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
