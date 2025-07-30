@@ -91,7 +91,6 @@ struct veygo_apartment_admin_swift: App {
                     }
                     return .clearUser
                 case 405:
-                    let token = extractToken(from: response) ?? ""
                     await MainActor.run {
                         alertMessage = "Internal Error: Method not allowed, please contact the developer dev@veygo.rent"
                         showAlert = true

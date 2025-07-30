@@ -11,6 +11,8 @@ struct TollCompanyView: View {
     
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
+    @State private var alertTitle: String = ""
+    @State private var clearUserTriggered: Bool = false
     
     @EnvironmentObject private var session: AdminSession
     @AppStorage("token") private var token: String = ""
@@ -156,8 +158,14 @@ struct TollCompanyView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
-        .alert(isPresented: $showAlert) {
-            Alert(title: Text("Error"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+        .alert(alertTitle, isPresented: $showAlert) {
+            Button("OK") {
+                if clearUserTriggered {
+                    session.user = nil
+                }
+            }
+        } message: {
+            Text(alertMessage)
         }
         .sheet(isPresented: $showAddTollCompanyView) {
             NavigationStack {
@@ -254,7 +262,6 @@ struct TollCompanyView: View {
                     }
                     return .renewSuccessful(token: token)
                 case 405:
-                    let token = extractToken(from: response) ?? ""
                     await MainActor.run {
                         alertMessage = "Internal Error: Method not allowed, please contact the developer dev@veygo.rent"
                         showAlert = true

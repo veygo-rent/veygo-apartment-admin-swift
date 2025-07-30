@@ -46,23 +46,11 @@ public struct SettingView: View {
                 
                 // Stand‑alone “Log Out” action
                 Button(role: .destructive) {
-                    // TODO: hook up your actual sign‑out logic here
-                    let request = veygoCurlRequest(url: "/api/v1/user/remove-token", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-                    URLSession.shared.dataTask(with: request) { data, response, error in
-                        guard let httpResponse = response as? HTTPURLResponse else {
-                            print("Invalid server response.")
-                            return
+                    Task {
+                        await ApiCallActor.shared.appendApi { token, userId in
+                            await logoutRequestAsync(token, userId)
                         }
-                        if httpResponse.statusCode == 200 {
-                            DispatchQueue.main.async {
-                                // Update UserSession
-                                token = ""
-                                userId = 0
-                                self.session.user = nil
-                            }
-                            print("🧼 Token cleared")
-                        }
-                    }.resume()
+                    }
                 } label: {
                     Text("Log Out")
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -87,23 +75,15 @@ public struct SettingView: View {
         .scrollContentBackground(.hidden)
         .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
     }
-    @ApiCallActor func refreshTollCompaniesAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
+    @ApiCallActor func logoutRequestAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
         do {
             if !token.isEmpty && userId > 0 {
                 let request = veygoCurlRequest(url: "/api/v1/user/remove-token", method: "GET", headers: ["auth": "\(token)$\(userId)"])
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (_, response) = try await URLSession.shared.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     await MainActor.run {
                         alertMessage = "Server Error: Invalid protocol"
-                        showAlert = true
-                    }
-                    return .doNothing
-                }
-                
-                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
-                    await MainActor.run {
-                        alertMessage = "Server Error: Invalid content"
                         showAlert = true
                     }
                     return .doNothing

@@ -136,7 +136,6 @@ public struct RenterView: View {
                     }
                     return .renewSuccessful(token: token)
                 case 405:
-                    let token = extractToken(from: response) ?? ""
                     await MainActor.run {
                         alertMessage = "Internal Error: Method not allowed, please contact the developer dev@veygo.rent"
                         showAlert = true
