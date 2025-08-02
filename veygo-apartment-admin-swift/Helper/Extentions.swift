@@ -8,8 +8,8 @@
 import Foundation
 internal import Combine
 
-extension Array where Element: Identifiable, Element.ID == Int {
-    func getItemBy(id: Int) -> Element? {
+extension Array where Element: Identifiable {
+    func getItemBy(id: Element.ID) -> Element? {
         return self.first { $0.id == id }
     }
 }
