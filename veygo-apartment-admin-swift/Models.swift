@@ -494,4 +494,3 @@ nonisolated struct ErrorResponse: Equatable, Codable {
     
     static let E_DEFAULT = ErrorResponse(title: "Unknown Error", message: "This shouldn't have happened. Please contact support.")
 }
-

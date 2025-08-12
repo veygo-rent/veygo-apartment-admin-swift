@@ -188,6 +188,22 @@ public struct ApartmentView: View {
                     .scrollContentBackground(.hidden)
                 }
             }
+            .toolbar {
+                if seletedApartment != nil {
+                    ToolbarItemGroup(placement: .confirmationAction) {
+                        Button {
+                            
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        Button {
+                            
+                        } label: {
+                            Image(systemName: "pencil.and.list.clipboard")
+                        }
+                    }
+                }
+            }
         }
         .onAppear {
             Task {
@@ -620,7 +636,7 @@ public struct ApartmentView: View {
         do {
             let user = await MainActor.run { self.session.user }
             if !token.isEmpty && userId > 0, user != nil {
-                let payload = await ApartmentNew(
+                let payload = await NewApartment(
                     name: newAptName,
                     email: newAptEmail,
                     phone: newAptPhone,

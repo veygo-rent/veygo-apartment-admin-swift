@@ -279,7 +279,7 @@ struct RenterAttributeView: View {
                     .foregroundColor(Color("TextBlackSecondary"))
                 Spacer()
                 if let expirationString = renter.studentEmailExpiration,
-                   let expirationDate = dateFromYYYYMMDD(expirationString) {
+                   let expirationDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expirationString) {
                     if expirationDate >= Date() {
                         Text("Expires at \(expirationString)")
                             .foregroundColor(Color("ValidGreen"))
@@ -303,7 +303,7 @@ struct RenterAttributeView: View {
                         .foregroundColor(Color("InvalidRed"))
                 }
             case .dob:
-                if let dobDate = dateFromYYYYMMDD(renter.dateOfBirth) {
+                if let dobDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: renter.dateOfBirth) {
                     Text(Self.displayFormatter.string(from: dobDate))
                         .foregroundColor(Color("TextBlackSecondary"))
                 } else {

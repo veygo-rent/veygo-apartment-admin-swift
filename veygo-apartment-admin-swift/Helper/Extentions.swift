@@ -17,7 +17,7 @@ extension Array where Element: Identifiable {
 extension DoNotRentList {
     func isValid() -> Bool {
         if let expUnwrapped = self.exp {
-            let expDate = dateFromYYYYMMDD(expUnwrapped)!
+            let expDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expUnwrapped)!
             let now = Date()
             if expDate < now {
                 return false
@@ -33,7 +33,7 @@ extension DoNotRentList {
 extension PublishRenter {
     func emailIsValid() -> Bool {
         if let expUnwrapped = self.studentEmailExpiration {
-            let expDate = dateFromYYYYMMDD(expUnwrapped)!
+            let expDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expUnwrapped)!
             let now = Date()
             if expDate < now {
                 return false
