@@ -7,18 +7,25 @@
 
 import Foundation
 
-nonisolated public func veygoCurlRequest (url: String, method: String, headers: [String: String] = [:], body: Data? = nil) -> URLRequest {
+public enum RequestMethods: String {
+    case get = "GET"
+    case post = "POST"
+    case put = "PUT"
+    case delete = "DELETE"
+}
+
+nonisolated public func veygoCurlRequest (url: String, method: RequestMethods, headers: [String: String] = [:], body: Data? = nil) -> URLRequest {
     let BASE_PATH = "https://dev.veygo.rent"
     guard let fullURL = URL(string: "\(BASE_PATH)\(url)") else {
         fatalError("Invalid URL: \(BASE_PATH)\(url)")
     }
 
     var request = URLRequest(url: fullURL)
-    request.httpMethod = method
+    request.httpMethod = method.rawValue
     request.allHTTPHeaderFields = headers
     request.httpBody = body
     
-    if headers["Content-Type"] == nil && method != "GET" {
+    if headers["Content-Type"] == nil && method != .get {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     }
     

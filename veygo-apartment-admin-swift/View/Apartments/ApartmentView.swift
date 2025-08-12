@@ -442,8 +442,9 @@ public struct ApartmentView: View {
     
     @ApiCallActor func refreshApartmentsAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
         do {
-            if !token.isEmpty && userId > 0 {
-                let request = veygoCurlRequest(url: "/api/v1/apartment/get-all-apartments", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+            let user = await MainActor.run { self.session.user }
+            if !token.isEmpty && userId > 0, user != nil {
+                let request = veygoCurlRequest(url: "/api/v1/apartment/get-all-apartments", method: .get, headers: ["auth": "\(token)$\(userId)"])
                 let (data, response) = try await URLSession.shared.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
@@ -529,8 +530,9 @@ public struct ApartmentView: View {
     
     @ApiCallActor func refreshTaxesAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
         do {
-            if !token.isEmpty && userId > 0 {
-                let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: "GET", headers: ["auth": "\(token)$\(userId)"])
+            let user = await MainActor.run { self.session.user }
+            if !token.isEmpty && userId > 0, user != nil {
+                let request = veygoCurlRequest(url: "/api/v1/apartment/get-taxes", method: .get, headers: ["auth": "\(token)$\(userId)"])
                 let (data, response) = try await URLSession.shared.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
@@ -616,7 +618,8 @@ public struct ApartmentView: View {
     
     @ApiCallActor func addApartmentAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
         do {
-            if !token.isEmpty && userId > 0 {
+            let user = await MainActor.run { self.session.user }
+            if !token.isEmpty && userId > 0, user != nil {
                 let payload = await ApartmentNew(
                     name: newAptName,
                     email: newAptEmail,
@@ -644,7 +647,7 @@ public struct ApartmentView: View {
                 )
                 
                 let jsonData = try VeygoJsonStandard.shared.encoder.encode(payload)
-                let request = veygoCurlRequest(url: "/api/v1/apartment/add-apartment", method: "POST", headers: ["auth": "\(token)$\(userId)"], body: jsonData)
+                let request = veygoCurlRequest(url: "/api/v1/apartment/add-apartment", method: .post, headers: ["auth": "\(token)$\(userId)"], body: jsonData)
                 let (data, response) = try await URLSession.shared.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
