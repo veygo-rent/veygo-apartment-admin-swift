@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8E3162B12E1B6DFF00FF1384 /* Stripe in Frameworks */ = {isa = PBXBuildFile; productRef = 8E3162B02E1B6DFF00FF1384 /* Stripe */; };
+		8E58AC0F2E526EAE00A94AA9 /* SmartcarAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 8E58AC0E2E526EAE00A94AA9 /* SmartcarAuth */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -64,6 +65,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8E3162B12E1B6DFF00FF1384 /* Stripe in Frameworks */,
+				8E58AC0F2E526EAE00A94AA9 /* SmartcarAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -132,6 +134,7 @@
 			name = "veygo-apartment-admin-swift";
 			packageProductDependencies = (
 				8E3162B02E1B6DFF00FF1384 /* Stripe */,
+				8E58AC0E2E526EAE00A94AA9 /* SmartcarAuth */,
 			);
 			productName = "veygo-apartment-admin-swift";
 			productReference = 8EF345102E1B6858001900A0 /* veygo-apartment-admin-swift.app */;
@@ -167,6 +170,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				8E3162AF2E1B6DFF00FF1384 /* XCRemoteSwiftPackageReference "stripe-ios" */,
+				8E58AC0D2E526EAE00A94AA9 /* XCRemoteSwiftPackageReference "ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8EF345112E1B6858001900A0 /* Products */;
@@ -523,6 +527,14 @@
 				minimumVersion = 24.16.1;
 			};
 		};
+		8E58AC0D2E526EAE00A94AA9 /* XCRemoteSwiftPackageReference "ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/smartcar/ios-sdk.git";
+			requirement = {
+				kind = exactVersion;
+				version = 6.2.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -530,6 +542,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8E3162AF2E1B6DFF00FF1384 /* XCRemoteSwiftPackageReference "stripe-ios" */;
 			productName = Stripe;
+		};
+		8E58AC0E2E526EAE00A94AA9 /* SmartcarAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8E58AC0D2E526EAE00A94AA9 /* XCRemoteSwiftPackageReference "ios-sdk" */;
+			productName = SmartcarAuth;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
