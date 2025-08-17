@@ -7,6 +7,7 @@
 
 @preconcurrency import Stripe
 import SwiftUI
+import SmartcarAuth
 
 @main
 struct veygo_apartment_admin_swift: App {
@@ -135,8 +136,31 @@ struct veygo_apartment_admin_swift: App {
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     
+    var smartcar: SmartcarAuth?
+    
+    func beginSmartcarAuth(from presenter: UIViewController) {
+        func completionHandler(code: String?, state: String?, virtualKeyUrl: String?, err: AuthorizationError?,) {
+            // TODO: send `code` to your backend, handle errors, etc.
+            print("Smartcar completion:", code ?? "-", err?.errorDescription ?? "ok")
+        }
+        
+        let clientId = "9871c60e-44d8-4a0d-9d5e-9b15e17c4de7"
+        
+        smartcar = SmartcarAuth(
+            clientId: clientId,
+            redirectUri: "sc\(clientId)://exchange",
+            scope: ["read_vin","read_vehicle_info","read_odometer"],
+            completionHandler: completionHandler
+        )
+        
+        let url = smartcar!.authUrlBuilder().build()
+        smartcar!.launchAuthFlow(url: url, viewController: presenter)
+    }
+    
+    
     func application(_ application: UIApplication,
-                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
+                     didFinishLaunchingWithOptions launchOptions:
+                     [UIApplication.LaunchOptionsKey : Any]? = nil
     ) -> Bool {
         return true
     }
@@ -147,6 +171,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         tokenString = "!\(tokenString)"
         #endif
         UserDefaults.standard.set(tokenString, forKey: "apns_token")
+    }
+    
+    // Resume from the redirect (custom scheme or universal link)
+    func application(_ app: UIApplication, open url: URL,
+                     options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        if ((smartcar?.handleCallback(callbackUrl: url)) != nil) == true { return true }
+        return false
     }
     
 }
