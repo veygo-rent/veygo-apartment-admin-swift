@@ -67,6 +67,7 @@ public struct SettingView: View {
                 }
             }
             .navigationTitle("Settings")
+            .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
         }
         .alert(alertTitle, isPresented: $showAlert) {
             Button("OK") {

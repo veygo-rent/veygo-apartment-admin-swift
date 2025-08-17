@@ -82,14 +82,14 @@ struct LoginView: View {
                 .padding(.leading, 10)
 
                 Spacer()
+                LegalText()
             }
             .padding(.horizontal, 400)
             .navigationDestination(isPresented: $goToResetView) {
                 Text("TODO: Reset Password")
             }
-            LegalText()
+            .background(Color("MainBG").ignoresSafeArea(.all))
         }
-        .background(Color("MainBG").ignoresSafeArea(.all))
         .alert(alertTitle, isPresented: $showAlert) {
             Button("OK") {
                 if clearUserTriggered {

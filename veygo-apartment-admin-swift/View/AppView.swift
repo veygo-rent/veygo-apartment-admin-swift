@@ -8,7 +8,7 @@
 import SwiftUI
 
 private enum RootDestination: String, Identifiable, Hashable {
-    case overview, apartments, vehicles, renters, setting, taxes, toll_companies, reports
+    case overview, apartments, vehicles, renters, setting, taxes, tollCompanies, reports, agreements
     var id: String { self.rawValue }
 }
 
@@ -22,6 +22,7 @@ struct AppView: View {
     @State private var taxes: [Tax] = []
     @State private var tollCompanies: [TransponderCompany] = []
     @State private var aptTaxes: [Int?] = []
+    @State private var vehicles: [PublishAdminVehicle] = []
     
     var body: some View {
         if session.user == nil {
@@ -30,45 +31,77 @@ struct AppView: View {
             TabView (selection: $selected) {
                 if session.user!.emailIsValid() {
                     TabSection("Summary") {
-                        Tab("Overview", systemImage: "chart.pie", value: RootDestination.overview) {
+                        Tab(value: RootDestination.overview) {
                             OverviewView()
+                        } label: {
+                            Label("Overview", systemImage: "chart.pie")
+                                .environment(\.symbolVariants, selected == .overview ? .fill : .none)
                         }
                     }
                     
                     if session.user!.employeeTier == .admin {
                         TabSection("Administration") {
-                            Tab("Taxes", systemImage: "percent", value: RootDestination.taxes) {
+                            Tab(value: RootDestination.taxes) {
                                 TaxView(taxes: $taxes)
+                            } label: {
+                                Label("Taxes", systemImage: "percent")
+                                    .environment(\.symbolVariants, selected == .taxes ? .fill : .none)
                             }
                             
-                            Tab("Toll Companies", systemImage: "car.front.waves.down", value: RootDestination.toll_companies) {
+                            Tab(value: RootDestination.tollCompanies) {
                                 TollCompanyView(tollCompanies: $tollCompanies)
+                            } label: {
+                                Label("Toll Companies", systemImage: "car.front.waves.down")
+                                    .environment(\.symbolVariants, selected == .tollCompanies ? .fill : .none)
                             }
                             
-                            Tab("Apartments", systemImage: "building.2", value: RootDestination.apartments) {
+                            Tab(value: RootDestination.apartments) {
                                 ApartmentView(apartments: $apartments, taxes: $taxes)
+                            } label: {
+                                Label("Apartments", systemImage: "building.2")
+                                    .environment(\.symbolVariants, selected == .apartments ? .fill : .none)
                             }
                             
-                            Tab("Reports", systemImage: "chart.line.text.clipboard", value: RootDestination.reports) {
+                            Tab(value: RootDestination.reports) {
                                 Text("Reports")
+                            } label: {
+                                Label("Reports", systemImage: "chart.line.text.clipboard")
+                                    .environment(\.symbolVariants, selected == .reports ? .fill : .none)
                             }
                         }
                     }
                     
                     TabSection("Rentals") {
-                        Tab("Renters", systemImage: "person", value: RootDestination.renters) {
+                        Tab(value: RootDestination.renters) {
                             RenterView(renters: $renters)
+                        } label: {
+                            Label("Renters", systemImage: "person")
+                                .environment(\.symbolVariants, selected == .renters ? .fill : .none)
                         }
                         
-                        Tab("Vehicles", systemImage: "car.rear", value: RootDestination.vehicles) {
-                            VehicleView()
+                        Tab(value: RootDestination.agreements) {
+                            AgreementView()
+                        } label: {
+                            Label("Agreements", systemImage: "pencil.and.list.clipboard")
+                                .environment(\.symbolVariants, selected == .agreements ? .fill : .none)
                         }
+
+                        Tab(value: RootDestination.vehicles) {
+                            VehicleView()
+                        } label: {
+                            Label("Vehicles", systemImage: "car.rear")
+                                .environment(\.symbolVariants, selected == .vehicles ? .fill : .none)
+                        }
+
                     }
                 }
                 
                 TabSection("Settings") {
-                    Tab("Setting", systemImage: "gearshape", value: RootDestination.setting) {
+                    Tab(value: RootDestination.setting) {
                         SettingView()
+                    } label: {
+                        Label("Setting", systemImage: "gearshape")
+                            .environment(\.symbolVariants, selected == .setting ? .fill : .none)
                     }
                 }
             }
@@ -76,8 +109,4 @@ struct AppView: View {
             .scrollContentBackground(.hidden)
         }
     }
-}
-
-#Preview {
-    AppView()
 }
