@@ -87,7 +87,7 @@ struct AppView: View {
                         }
 
                         Tab(value: RootDestination.vehicles) {
-                            VehicleView()
+                            VehicleView(vehicles: $vehicles)
                         } label: {
                             Label("Vehicles", systemImage: "car.rear")
                                 .environment(\.symbolVariants, selected == .vehicles ? .fill : .none)
