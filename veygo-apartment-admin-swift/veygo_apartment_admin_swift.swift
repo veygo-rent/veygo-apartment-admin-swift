@@ -10,6 +10,7 @@ import SwiftUI
 
 @main
 struct veygo_apartment_admin_swift: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate: AppDelegate
     
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
@@ -82,7 +83,7 @@ struct veygo_apartment_admin_swift: App {
                         let admin: PublishRenter
                     }
                     
-                    let token = extractToken(from: response) ?? ""
+                    let token = extractToken(from: response, for: "Renewing token") ?? ""
                     guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
                         await MainActor.run {
                             alertTitle = "Server Error"
@@ -130,4 +131,22 @@ struct veygo_apartment_admin_swift: App {
             return .doNothing
         }
     }
+}
+
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
+    ) -> Bool {
+        return true
+    }
+    
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        var tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        #if DEBUG
+        tokenString = "!\(tokenString)"
+        #endif
+        UserDefaults.standard.set(tokenString, forKey: "apns_token")
+    }
+    
 }

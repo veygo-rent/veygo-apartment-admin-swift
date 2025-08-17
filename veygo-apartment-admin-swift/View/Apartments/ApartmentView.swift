@@ -487,7 +487,7 @@ public struct ApartmentView: View {
                         let apartments: [Apartment]
                     }
                     
-                    let token = extractToken(from: response) ?? ""
+                    let token = extractToken(from: response, for: "Getting apartments") ?? ""
                     guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
                         await MainActor.run {
                             alertTitle = "Server Error"
@@ -575,7 +575,7 @@ public struct ApartmentView: View {
                         let taxes: [Tax]
                     }
                     
-                    let token = extractToken(from: response) ?? ""
+                    let token = extractToken(from: response, for: "Getting taxes") ?? ""
                     guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
                         await MainActor.run {
                             alertTitle = "Server Error"
@@ -690,7 +690,7 @@ public struct ApartmentView: View {
                         let apartment: Apartment
                     }
                     
-                    let token = extractToken(from: response) ?? ""
+                    let token = extractToken(from: response, for: "Getting apartments") ?? ""
                     guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
                         await MainActor.run {
                             alertTitle = "Server Error"

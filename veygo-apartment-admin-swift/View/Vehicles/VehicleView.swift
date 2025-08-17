@@ -202,7 +202,7 @@ struct VehicleView: View {
                         let vehicles: [PublishAdminVehicle]
                     }
                     
-                    let token = extractToken(from: response) ?? ""
+                    let token = extractToken(from: response, for: "Getting vehicles") ?? ""
                     guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
                         await MainActor.run {
                             alertTitle = "Server Error"

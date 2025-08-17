@@ -37,12 +37,12 @@ nonisolated public func veygoCurlRequest (url: String, method: RequestMethods, h
     return request
 }
 
-nonisolated public func extractToken(from response: URLResponse?) -> String? {
+nonisolated public func extractToken(from response: URLResponse?, for purpose: String) -> String? {
     guard let httpResponse = response as? HTTPURLResponse else {
         print("Failed to cast response to HTTPURLResponse")
         return nil
     }
     let token = httpResponse.value(forHTTPHeaderField: "token")
-    print("Extracted token from header: \(token ?? "nil")")
+    print("Extracted token from header: \(token ?? "nil") for \(purpose)\n")
     return token
 }

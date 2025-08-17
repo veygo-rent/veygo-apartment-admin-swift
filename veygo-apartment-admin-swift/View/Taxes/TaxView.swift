@@ -191,7 +191,7 @@ struct TaxView: View {
                         let taxes: [Tax]
                     }
                     
-                    let token = extractToken(from: response) ?? ""
+                    let token = extractToken(from: response, for: "Getting taxes") ?? ""
                     guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
                         await MainActor.run {
                             alertTitle = "Server Error"
