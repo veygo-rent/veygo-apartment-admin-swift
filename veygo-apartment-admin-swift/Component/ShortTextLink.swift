@@ -22,9 +22,3 @@ struct ShortTextLink: View {
         }
     }
 }
-
-#Preview {
-    ShortTextLink(text: "Forgot Password?") {
-        print("Forgot Password Pressed")
-    }
-}

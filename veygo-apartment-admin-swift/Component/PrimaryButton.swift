@@ -27,9 +27,3 @@ struct PrimaryButton: View {
         }
     }
 }
-
-#Preview {
-    PrimaryButton(text: "Login") {
-        print("Log In Button Pressed")
-    }
-}

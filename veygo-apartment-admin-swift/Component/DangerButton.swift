@@ -30,9 +30,3 @@ struct DangerButton: View {
         }
     }
 }
-
-#Preview {
-    DangerButton(text: "Delete Renter") {
-        print("Delete Button Pressed")
-    }
-}

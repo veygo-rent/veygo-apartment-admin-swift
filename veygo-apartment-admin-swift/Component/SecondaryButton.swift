@@ -30,9 +30,3 @@ struct SecondaryButton: View {
         }
     }
 }
-
-#Preview {
-    SecondaryButton(text: "Register") {
-        print("Log In Button Pressed")
-    }
-}
