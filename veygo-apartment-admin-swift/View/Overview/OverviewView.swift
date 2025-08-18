@@ -46,7 +46,6 @@ public struct OverviewView: View {
             }
         }
         .onOpenURL(perform: { url in
-            print(url)
             if let appDelegate = AppDelegate.shared,
                let smartcar = appDelegate.smartcar {
                 smartcar.handleCallback(callbackUrl: url)

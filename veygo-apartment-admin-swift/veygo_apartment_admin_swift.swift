@@ -143,7 +143,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     func beginSmartcarAuth(from presenter: UIViewController) {
         func completionHandler(code: String?, state: String?, virtualKeyUrl: String?, err: AuthorizationError?,) -> Void {
             guard let code else { return }
-            print("Smartcar completion:", code)
+            UserDefaults.standard.set(code, forKey: "smartcar_exchange_token")
         }
         
         let clientId = "9871c60e-44d8-4a0d-9d5e-9b15e17c4de7"
@@ -157,7 +157,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 "required:read_odometer",
                 "required:control_security",
                 "required:read_fuel",
-                "required:read_location"
+                "required:read_location",
+                "required:read_security"
             ],
             completionHandler: completionHandler
         )
