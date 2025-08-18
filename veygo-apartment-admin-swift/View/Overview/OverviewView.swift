@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SmartcarAuth
 
 public struct OverviewView: View {
     
@@ -44,6 +45,13 @@ public struct OverviewView: View {
                 }
             }
         }
+        .onOpenURL(perform: { url in
+            print(url)
+            if let appDelegate = AppDelegate.shared,
+               let smartcar = appDelegate.smartcar {
+                smartcar.handleCallback(callbackUrl: url)
+            }
+        })
     }
     
     @ApiCallActor func updateApnsTokenAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {

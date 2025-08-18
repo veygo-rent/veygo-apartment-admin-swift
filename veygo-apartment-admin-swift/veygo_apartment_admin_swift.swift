@@ -141,17 +141,24 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     var smartcar: SmartcarAuth?
     
     func beginSmartcarAuth(from presenter: UIViewController) {
-        func completionHandler(code: String?, state: String?, virtualKeyUrl: String?, err: AuthorizationError?,) {
-            // TODO: send `code` to your backend, handle errors, etc.
-            print("Smartcar completion:", code ?? "-", err?.errorDescription ?? "ok")
+        func completionHandler(code: String?, state: String?, virtualKeyUrl: String?, err: AuthorizationError?,) -> Void {
+            guard let code else { return }
+            print("Smartcar completion:", code)
         }
         
         let clientId = "9871c60e-44d8-4a0d-9d5e-9b15e17c4de7"
         
         smartcar = SmartcarAuth(
             clientId: clientId,
-            redirectUri: "veygo-admin://exchange",
-            scope: ["read_vin","read_vehicle_info","read_odometer"],
+            redirectUri: "veygo-admin://smartcar",
+            scope: [
+                "required:read_vin",
+                "required:read_vehicle_info",
+                "required:read_odometer",
+                "required:control_security",
+                "required:read_fuel",
+                "required:read_location"
+            ],
             completionHandler: completionHandler
         )
         
