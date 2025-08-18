@@ -7,6 +7,7 @@
 
 import Foundation
 internal import Combine
+import UIKit
 
 extension Array where Element: Identifiable {
     func getItemBy(id: Element.ID) -> Element? {
@@ -52,4 +53,13 @@ protocol HasName {
 
 class AdminSession: ObservableObject {
     @Published var user: PublishRenter? = nil
+}
+
+extension UIViewController {
+    func topMostPresented() -> UIViewController {
+        if let nav = self as? UINavigationController { return nav.visibleViewController?.topMostPresented() ?? nav }
+        if let tab = self as? UITabBarController { return tab.selectedViewController?.topMostPresented() ?? tab }
+        if let presented = presentedViewController { return presented.topMostPresented() }
+        return self
+    }
 }

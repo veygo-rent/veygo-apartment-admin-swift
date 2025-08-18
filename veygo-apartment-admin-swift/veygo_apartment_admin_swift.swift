@@ -136,6 +136,8 @@ struct veygo_apartment_admin_swift: App {
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     
+    static private(set) var shared: AppDelegate! = nil
+    
     var smartcar: SmartcarAuth?
     
     func beginSmartcarAuth(from presenter: UIViewController) {
@@ -148,7 +150,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         
         smartcar = SmartcarAuth(
             clientId: clientId,
-            redirectUri: "sc\(clientId)://exchange",
+            redirectUri: "veygo-admin://exchange",
             scope: ["read_vin","read_vehicle_info","read_odometer"],
             completionHandler: completionHandler
         )
@@ -157,11 +159,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         smartcar!.launchAuthFlow(url: url, viewController: presenter)
     }
     
-    
-    func application(_ application: UIApplication,
-                     didFinishLaunchingWithOptions launchOptions:
-                     [UIApplication.LaunchOptionsKey : Any]? = nil
-    ) -> Bool {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        AppDelegate.self.shared = self
         return true
     }
     
@@ -173,11 +172,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         UserDefaults.standard.set(tokenString, forKey: "apns_token")
     }
     
-    // Resume from the redirect (custom scheme or universal link)
-    func application(_ app: UIApplication, open url: URL,
-                     options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        if ((smartcar?.handleCallback(callbackUrl: url)) != nil) == true { return true }
-        return false
+    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        let config = UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+        config.delegateClass = SceneDelegate.self
+        return config
     }
+}
+
+class SceneDelegate: NSObject, UIWindowSceneDelegate {
     
 }

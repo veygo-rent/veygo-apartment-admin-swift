@@ -18,24 +18,32 @@ public struct OverviewView: View {
     @EnvironmentObject var session: AdminSession
     
     public var body: some View {
-        Text("OverviewView")
-            .onAppear {
-                let center = UNUserNotificationCenter.current()
-                center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-                    if granted {
-                        DispatchQueue.main.async {
-                            UIApplication.shared.registerForRemoteNotifications()
-                        }
+        Button("Smartcar Test") {
+            // Find a presenter from the active UIWindowScene
+            guard
+                let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+                let presenter = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController?.topMostPresented()
+            else { return }
+
+            (AppDelegate.shared)?.beginSmartcarAuth(from: presenter)
+        }
+        .onAppear {
+            let center = UNUserNotificationCenter.current()
+            center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+                if granted {
+                    DispatchQueue.main.async {
+                        UIApplication.shared.registerForRemoteNotifications()
                     }
                 }
             }
-            .onChange(of: apns_token) { oldValue, newValue in
-                Task {
-                    await ApiCallActor.shared.appendApi { token, userId in
-                        await updateApnsTokenAsync(token, userId)
-                    }
+        }
+        .onChange(of: apns_token) { oldValue, newValue in
+            Task {
+                await ApiCallActor.shared.appendApi { token, userId in
+                    await updateApnsTokenAsync(token, userId)
                 }
             }
+        }
     }
     
     @ApiCallActor func updateApnsTokenAsync (_ token: String, _ userId: Int) async -> ApiTaskResponse {
