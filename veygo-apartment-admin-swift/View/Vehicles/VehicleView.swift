@@ -22,6 +22,7 @@ struct VehicleView: View {
     @State private var selectedVehicle: PublishAdminVehicle.ID? = nil
     
     @State private var showAddVehicleView: Bool = false
+    @State private var isLoading: Bool = false
     
     @State private var newTaxName: String = ""
     @State private var newTaxRate: String = ""
@@ -136,7 +137,10 @@ struct VehicleView: View {
                                             if let vehicleID = selectedVehicle {
                                                 Task {
                                                     await ApiCallActor.shared.appendApi { token, userId in
-                                                        await lockingWithSmartcarAsync(token, userId, vehicleID, toLock: true)
+                                                        await MainActor.run { isLoading = true }
+                                                        let result = await lockingWithSmartcarAsync(token, userId, vehicleID, toLock: true)
+                                                        await MainActor.run { isLoading = false }
+                                                        return result
                                                     }
                                                 }
                                             }
@@ -146,7 +150,10 @@ struct VehicleView: View {
                                             if let vehicleID = selectedVehicle {
                                                 Task {
                                                     await ApiCallActor.shared.appendApi { token, userId in
-                                                        await lockingWithSmartcarAsync(token, userId, vehicleID, toLock: false)
+                                                        await MainActor.run { isLoading = true }
+                                                        let result = await lockingWithSmartcarAsync(token, userId, vehicleID, toLock: false)
+                                                        await MainActor.run { isLoading = false }
+                                                        return result
                                                     }
                                                 }
                                             }
@@ -162,6 +169,27 @@ struct VehicleView: View {
                         .listRowBackground(Color("CardBG"))
                     }
                     .scrollContentBackground(.hidden)
+                }
+                if isLoading {
+                    ZStack {
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                            .ignoresSafeArea()
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                                .scaleEffect(1.4)
+                            Text("Working…")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(20)
+                        .background(.regularMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .shadow(radius: 8)
+                    }
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.2), value: isLoading)
                 }
             }
         }
