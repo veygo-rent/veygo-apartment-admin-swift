@@ -465,7 +465,7 @@ struct VehicleView: View {
                     }
                     await MainActor.run {
                         alertTitle = "Successful"
-                        alertMessage = "SC commend sent"
+                        alertMessage = toLock ? "Vehicle is now locked" : "Vehicle is now unlocked"
                         showAlert = true
                         // update vehicles
                         print(decodedBody.updatedVehicle)
