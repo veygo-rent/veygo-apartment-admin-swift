@@ -142,7 +142,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     
     func beginSmartcarAuth(from presenter: UIViewController) {
         func completionHandler(code: String?, state: String?, virtualKeyUrl: String?, err: AuthorizationError?,) -> Void {
-            UserDefaults.standard.set(code, forKey: "smartcar_exchange_code")
+            if let code {
+                UserDefaults.standard.set(code, forKey: "smartcar_exchange_code")
+            }
         }
         
         let clientId = "9871c60e-44d8-4a0d-9d5e-9b15e17c4de7"

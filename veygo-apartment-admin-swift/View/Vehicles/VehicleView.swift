@@ -368,7 +368,6 @@ struct VehicleView: View {
                         alertTitle = "Bad Request"
                         alertMessage = "Invalid vehicle information"
                         showAlert = true
-                        clearUserTriggered = true
                     }
                     return .doNothing
                 case 401:
