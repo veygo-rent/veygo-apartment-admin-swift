@@ -136,28 +136,28 @@ struct VehicleView: View {
                                             if let vehicleID = selectedVehicle {
                                                 Task {
                                                     await ApiCallActor.shared.appendApi { token, userId in
-                                                        await lockingWithSmartcarAsync(token, userId, vehicleID, true)
+                                                        await lockingWithSmartcarAsync(token, userId, vehicleID, toLock: true)
                                                     }
                                                 }
                                             }
-                                        }
+                                        }.buttonStyle(.borderless)
                                         DangerButton(text: "Unlock w/ SmartCar") {
                                             // do something
                                             if let vehicleID = selectedVehicle {
                                                 Task {
                                                     await ApiCallActor.shared.appendApi { token, userId in
-                                                        await lockingWithSmartcarAsync(token, userId, vehicleID, false)
+                                                        await lockingWithSmartcarAsync(token, userId, vehicleID, toLock: false)
                                                     }
                                                 }
                                             }
-                                        }
+                                        }.buttonStyle(.borderless)
                                     }
                                     .padding(.bottom, 16)
                                 }
                             }
                             PrimaryButton(text: "Make available / Unavailable") {
                                 // do something
-                            }
+                            }.buttonStyle(.borderless)
                         }
                         .listRowBackground(Color("CardBG"))
                     }
@@ -360,7 +360,6 @@ struct VehicleView: View {
                     }
                     await MainActor.run {
                         // update vehicles
-                        print(decodedBody.updatedVehicle)
                         vehicles.updateItem(id: vehicleId, with: decodedBody.updatedVehicle)
                     }
                     return .renewSuccessful(token: token)
@@ -416,7 +415,7 @@ struct VehicleView: View {
         }
     }
     
-    @ApiCallActor func lockingWithSmartcarAsync (_ token: String, _ userId: Int, _ vehicleId: Int, _ toLock: Bool) async -> ApiTaskResponse {
+    @ApiCallActor func lockingWithSmartcarAsync (_ token: String, _ userId: Int, _ vehicleId: Int, toLock toLockInput: Bool) async -> ApiTaskResponse {
         do {
             let user = await MainActor.run { self.session.user }
             if !token.isEmpty && userId > 0, user != nil {
@@ -426,7 +425,7 @@ struct VehicleView: View {
                     let toLock: Bool
                 }
                 
-                let jsonData = try VeygoJsonStandard.shared.encoder.encode(Payload.init(vehicleId: vehicleId, toLock: toLock))
+                let jsonData = try VeygoJsonStandard.shared.encoder.encode(Payload.init(vehicleId: vehicleId, toLock: toLockInput))
                 let request = veygoCurlRequest(url: "/api/v1/vehicle/lock-with-sc", method: .post, headers: ["auth": "\(token)$\(userId)"], body: jsonData)
                 let (data, response) = try await URLSession.shared.data(for: request)
                 
@@ -454,7 +453,7 @@ struct VehicleView: View {
                         let updatedVehicle: PublishAdminVehicle
                     }
                     
-                    let token = extractToken(from: response, for: "Setting up smartcar") ?? ""
+                    let token = extractToken(from: response, for: "Loacking the vehicle with smartcar") ?? ""
                     guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
                         await MainActor.run {
                             alertTitle = "Server Error"
@@ -465,10 +464,9 @@ struct VehicleView: View {
                     }
                     await MainActor.run {
                         alertTitle = "Successful"
-                        alertMessage = toLock ? "Vehicle is now locked" : "Vehicle is now unlocked"
+                        alertMessage = toLockInput ? "Vehicle is now locked" : "Vehicle is now unlocked"
                         showAlert = true
                         // update vehicles
-                        print(decodedBody.updatedVehicle)
                         vehicles.updateItem(id: vehicleId, with: decodedBody.updatedVehicle)
                     }
                     return .renewSuccessful(token: token)
