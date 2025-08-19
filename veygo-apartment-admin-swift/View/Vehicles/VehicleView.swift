@@ -119,7 +119,7 @@ struct VehicleView: View {
                                             let presenter = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController?.topMostPresented()
                                         else { return }
 
-                                        (AppDelegate.shared)?.beginSmartcarAuth(from: presenter)
+                                        (AppDelegate.shared)?.beginSmartcarAuth(from: presenter, vin: vehicle.vin)
                                     }
                                     .padding(.bottom, 16)
                                     .onChange(of: smartcarExchangeCode) { oldValue, newValue in

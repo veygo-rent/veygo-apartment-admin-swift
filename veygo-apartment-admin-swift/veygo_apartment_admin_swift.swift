@@ -140,7 +140,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     
     var smartcar: SmartcarAuth?
     
-    func beginSmartcarAuth(from presenter: UIViewController) {
+    func beginSmartcarAuth(from presenter: UIViewController, vin: String) {
         func completionHandler(code: String?, state: String?, virtualKeyUrl: String?, err: AuthorizationError?,) -> Void {
             if let code {
                 UserDefaults.standard.set(code, forKey: "smartcar_exchange_code")
@@ -161,10 +161,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 "required:read_location",
                 "required:read_security"
             ],
-            completionHandler: completionHandler
+            completionHandler: completionHandler,
         )
-        
-        let url = smartcar!.authUrlBuilder().build()
+        var builder = smartcar!.authUrlBuilder()
+        builder = builder.setSingleSelect(singleSelect: true).setSingleSelectVin(vin: vin)
+        let url = builder.build()
         smartcar!.launchAuthFlow(url: url, viewController: presenter)
     }
     
