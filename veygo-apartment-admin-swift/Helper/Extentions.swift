@@ -13,6 +13,16 @@ extension Array where Element: Identifiable {
     func getItemBy(id: Element.ID) -> Element? {
         return self.first { $0.id == id }
     }
+    
+    func getIndexBy(id: Element.ID) -> Int? {
+        return self.firstIndex { $0.id == id }
+    }
+    
+    mutating func updateItem(id: Element.ID, with newValue: Element) {
+        if let index = self.getIndexBy(id: id) {
+            self[index] = newValue
+        }
+    }
 }
 
 extension DoNotRentList {
