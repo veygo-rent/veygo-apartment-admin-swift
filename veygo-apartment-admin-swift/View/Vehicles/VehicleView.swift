@@ -566,6 +566,28 @@ struct VehicleView: View {
                         clearUserTriggered = true
                     }
                     return .clearUser
+                case 502:
+                    nonisolated struct FetchSuccessBody: Decodable {
+                        let updatedVehicle: PublishAdminVehicle
+                    }
+                    
+                    let token = extractToken(from: response, for: "Loacking the vehicle with smartcar") ?? ""
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                        await MainActor.run {
+                            alertTitle = "Server Error"
+                            alertMessage = "Invalid content"
+                            showAlert = true
+                        }
+                        return .renewSuccessful(token: token)
+                    }
+                    await MainActor.run {
+                        alertTitle = "Unsuccessful"
+                        alertMessage = "Smartcar did not accept the lock request, try in 2 minutes"
+                        showAlert = true
+                        // update vehicles
+                        vehicles.updateItem(id: vehicleId, with: decodedBody.updatedVehicle)
+                    }
+                    return .renewSuccessful(token: token)
                 default:
                     await MainActor.run {
                         alertTitle = "Application Error"
@@ -673,6 +695,28 @@ struct VehicleView: View {
                         clearUserTriggered = true
                     }
                     return .clearUser
+                case 502:
+                    nonisolated struct FetchSuccessBody: Decodable {
+                        let updatedVehicle: PublishAdminVehicle
+                    }
+                    
+                    let token = extractToken(from: response, for: "Loacking the vehicle with smartcar") ?? ""
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                        await MainActor.run {
+                            alertTitle = "Server Error"
+                            alertMessage = "Invalid content"
+                            showAlert = true
+                        }
+                        return .renewSuccessful(token: token)
+                    }
+                    await MainActor.run {
+                        alertTitle = "Unsuccessful"
+                        alertMessage = "Tesla did not accept the lock request, try in 1 minutes"
+                        showAlert = true
+                        // update vehicles
+                        vehicles.updateItem(id: vehicleId, with: decodedBody.updatedVehicle)
+                    }
+                    return .renewSuccessful(token: token)
                 default:
                     await MainActor.run {
                         alertTitle = "Application Error"
