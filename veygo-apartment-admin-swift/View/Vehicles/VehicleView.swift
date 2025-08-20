@@ -566,7 +566,7 @@ struct VehicleView: View {
                         clearUserTriggered = true
                     }
                     return .clearUser
-                case 502:
+                case 429:
                     nonisolated struct FetchSuccessBody: Decodable {
                         let updatedVehicle: PublishAdminVehicle
                     }
@@ -694,7 +694,7 @@ struct VehicleView: View {
                         clearUserTriggered = true
                     }
                     return .clearUser
-                case 502:
+                case 429:
                     nonisolated struct FetchSuccessBody: Decodable {
                         let updatedVehicle: PublishAdminVehicle
                     }
