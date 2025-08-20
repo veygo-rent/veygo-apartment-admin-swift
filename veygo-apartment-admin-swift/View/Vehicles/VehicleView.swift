@@ -145,7 +145,9 @@ struct VehicleView: View {
                                                     }
                                                 }
                                             }
-                                        }.buttonStyle(.borderless)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .disabled(isLoading)
                                         DangerButton(text: "Unlock w/ SmartCar") {
                                             // do something
                                             if let vehicleID = selectedVehicle {
@@ -158,7 +160,9 @@ struct VehicleView: View {
                                                     }
                                                 }
                                             }
-                                        }.buttonStyle(.borderless)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .disabled(isLoading)
                                     }
                                     .padding(.bottom, 16)
                                 }
@@ -177,7 +181,9 @@ struct VehicleView: View {
                                                     }
                                                 }
                                             }
-                                        }.buttonStyle(.borderless)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .disabled(isLoading)
                                         DangerButton(text: "Unlock w/ Tesla") {
                                             // do something
                                             if let vehicleID = selectedVehicle {
@@ -190,7 +196,9 @@ struct VehicleView: View {
                                                     }
                                                 }
                                             }
-                                        }.buttonStyle(.borderless)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .disabled(isLoading)
                                     }
                                     .padding(.bottom, 16)
                                 }
@@ -206,23 +214,18 @@ struct VehicleView: View {
                     .scrollContentBackground(.hidden)
                 }
                 if isLoading {
-                    ZStack {
-                        Rectangle()
-                            .fill(.ultraThinMaterial)
-                            .ignoresSafeArea()
-                        VStack(spacing: 12) {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle())
-                                .scaleEffect(1.4)
-                            Text("Working…")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(20)
-                        .background(.regularMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(radius: 8)
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .scaleEffect(1.4)
+                        Text("Working…")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
+                    .padding(20)
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(radius: 8)
                     .transition(.opacity)
                     .animation(.easeInOut(duration: 0.2), value: isLoading)
                 }
