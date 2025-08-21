@@ -81,7 +81,7 @@ struct VehicleView: View {
         } detail: {
             ZStack {
                 Color("MainBG").ignoresSafeArea()
-                if let vehicleID = selectedVehicle, let vehicle = vehicles.getItemBy(id: vehicleID) {
+                if let vehicleID = selectedVehicle, let vehicle = vehicles.getItemBy(id: vehicleID), let user = session.user {
                     List {
                         Text("\(vehicle.make) \(vehicle.model)")
                             .foregroundColor(Color("TextBlackPrimary"))
@@ -107,33 +107,55 @@ struct VehicleView: View {
                                 .foregroundColor(Color("TextBlackPrimary"))
                         }
                         .listRowBackground(Color("CardBG"))
+                        HStack (spacing: 0) {
+                            Text("Odometer: ")
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color("TextBlackPrimary"))
+                            Spacer()
+                            Text("\(vehicle.odometer)")
+                                .foregroundColor(Color("TextBlackPrimary"))
+                        }
+                        .listRowBackground(Color("CardBG"))
+                        HStack (spacing: 0) {
+                            Text("Fuel or Electricity Level: ")
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color("TextBlackPrimary"))
+                            Spacer()
+                            Text("\(vehicle.tankLevelPercentage)%")
+                                .foregroundColor(Color("TextBlackPrimary"))
+                        }
+                        .listRowBackground(Color("CardBG"))
                         
                         VStack (spacing: 0) {
                             switch vehicle.remoteMgmt {
                             case .smartcar:
                                 if vehicle.remoteMgmtId.isEmpty {
-                                    SecondaryButton(text: "Connect to smartcar") {
-                                        // Find a presenter from the active UIWindowScene
-                                        guard
-                                            let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
-                                            let presenter = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController?.topMostPresented()
-                                        else { return }
+                                    if user.employeeTier == .admin {
+                                        SecondaryButton(text: "Connect to smartcar") {
+                                            // Find a presenter from the active UIWindowScene
+                                            guard
+                                                let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+                                                let presenter = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController?.topMostPresented()
+                                            else { return }
 
-                                        (AppDelegate.shared)?.beginSmartcarAuth(from: presenter, vin: vehicle.vin)
-                                    }
-                                    .padding(.bottom, 16)
-                                    .onChange(of: smartcarExchangeCode) { oldValue, newValue in
-                                        if let vehicleID = selectedVehicle, !newValue.isEmpty {
-                                            Task {
-                                                await ApiCallActor.shared.appendApi { token, userId in
-                                                    await setupSmartcarAsync(token, userId, vehicleID, newValue)
+                                            (AppDelegate.shared)?.beginSmartcarAuth(from: presenter, vin: vehicle.vin)
+                                        }
+                                        .padding(.bottom, 16)
+                                        .onChange(of: smartcarExchangeCode) { oldValue, newValue in
+                                            if let vehicleID = selectedVehicle, !newValue.isEmpty {
+                                                Task {
+                                                    await ApiCallActor.shared.appendApi { token, userId in
+                                                        await setupSmartcarAsync(token, userId, vehicleID, newValue)
+                                                    }
                                                 }
                                             }
                                         }
+                                    } else {
+                                        EmptyView()
                                     }
                                 } else {
                                     HStack (spacing: 16) {
-                                        SecondaryButton(text: "Lock w/ SmartCar") {
+                                        SecondaryButton(text: "Update Fuel & Odometer") {
                                             // do something
                                             if let vehicleID = selectedVehicle {
                                                 Task {
@@ -148,7 +170,22 @@ struct VehicleView: View {
                                         }
                                         .buttonStyle(.borderless)
                                         .disabled(isLoading)
-                                        DangerButton(text: "Unlock w/ SmartCar") {
+                                        SecondaryButton(text: "Lock") {
+                                            // do something
+                                            if let vehicleID = selectedVehicle {
+                                                Task {
+                                                    await ApiCallActor.shared.appendApi { token, userId in
+                                                        await MainActor.run { isLoading = true }
+                                                        let result = await lockingWithSmartcarAsync(token, userId, vehicleID, toLock: true)
+                                                        await MainActor.run { isLoading = false }
+                                                        return result
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .disabled(isLoading)
+                                        DangerButton(text: "Unlock") {
                                             // do something
                                             if let vehicleID = selectedVehicle {
                                                 Task {
@@ -169,7 +206,7 @@ struct VehicleView: View {
                             case .tesla:
                                 if vehicle.remoteMgmtId == vehicle.vin {
                                     HStack (spacing: 16) {
-                                        SecondaryButton(text: "Lock w/ Tesla") {
+                                        SecondaryButton(text: "Update Range & Odometer") {
                                             // do something
                                             if let vehicleID = selectedVehicle {
                                                 Task {
@@ -184,7 +221,22 @@ struct VehicleView: View {
                                         }
                                         .buttonStyle(.borderless)
                                         .disabled(isLoading)
-                                        DangerButton(text: "Unlock w/ Tesla") {
+                                        SecondaryButton(text: "Lock") {
+                                            // do something
+                                            if let vehicleID = selectedVehicle {
+                                                Task {
+                                                    await ApiCallActor.shared.appendApi { token, userId in
+                                                        await MainActor.run { isLoading = true }
+                                                        let result = await lockingWithTeslaAsync(token, userId, vehicleID, toLock: true)
+                                                        await MainActor.run { isLoading = false }
+                                                        return result
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .disabled(isLoading)
+                                        DangerButton(text: "Unlock") {
                                             // do something
                                             if let vehicleID = selectedVehicle {
                                                 Task {
