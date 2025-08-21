@@ -155,7 +155,7 @@ struct VehicleView: View {
                                     }
                                 } else {
                                     HStack (spacing: 16) {
-                                        SecondaryButton(text: "Update Fuel & Odometer") {
+                                        SecondaryButton(text: "Update") {
                                             // do something
                                             if let vehicleID = selectedVehicle {
                                                 Task {
@@ -206,7 +206,7 @@ struct VehicleView: View {
                             case .tesla:
                                 if vehicle.remoteMgmtId == vehicle.vin {
                                     HStack (spacing: 16) {
-                                        SecondaryButton(text: "Update Range & Odometer") {
+                                        SecondaryButton(text: "Update") {
                                             // do something
                                             if let vehicleID = selectedVehicle {
                                                 Task {
