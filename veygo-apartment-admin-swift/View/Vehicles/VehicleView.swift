@@ -42,13 +42,13 @@ struct VehicleView: View {
         NavigationSplitView {
             List(filteredVehicles, selection: $selectedVehicle) { vehicle in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(vehicle.name)
+                    Text("\(vehicle.licenseState) \(vehicle.licenseNumber)")
                         .font(.headline)
                         .foregroundColor(Color("TextBlackPrimary"))
                     Text("\(vehicle.make) \(vehicle.model)")
                         .font(.subheadline)
                         .foregroundColor(Color("TextBlackSecondary"))
-                    Text("\(vehicle.licenseState) \(vehicle.licenseNumber)")
+                    Text(vehicle.name)
                         .font(.subheadline)
                         .foregroundColor(Color("TextBlackSecondary"))
                     Text(vehicle.vin)
@@ -161,7 +161,7 @@ struct VehicleView: View {
                                                 Task {
                                                     await ApiCallActor.shared.appendApi { token, userId in
                                                         await MainActor.run { isLoading = true }
-                                                        let result = await lockingWithSmartcarAsync(token, userId, vehicleID, toLock: true)
+                                                        let result = await updatingWithSmartcarAsync(token, userId, vehicleID)
                                                         await MainActor.run { isLoading = false }
                                                         return result
                                                     }
@@ -570,7 +570,7 @@ struct VehicleView: View {
                         let updatedVehicle: PublishAdminVehicle
                     }
                     
-                    let token = extractToken(from: response, for: "Loacking the vehicle with smartcar") ?? ""
+                    let token = extractToken(from: response, for: "Locking the vehicle with smartcar") ?? ""
                     guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
                         await MainActor.run {
                             alertTitle = "Server Error"
@@ -623,7 +623,134 @@ struct VehicleView: View {
                         let updatedVehicle: PublishAdminVehicle
                     }
                     
-                    let token = extractToken(from: response, for: "Loacking the vehicle with smartcar") ?? ""
+                    let token = extractToken(from: response, for: "Locking the vehicle with smartcar") ?? ""
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                        await MainActor.run {
+                            alertTitle = "Server Error"
+                            alertMessage = "Invalid content"
+                            showAlert = true
+                        }
+                        return .renewSuccessful(token: token)
+                    }
+                    await MainActor.run {
+                        alertTitle = "Unsuccessful"
+                        alertMessage = "Smartcar did not accept the lock request, try in 2 minutes"
+                        showAlert = true
+                        // update vehicles
+                        vehicles.updateItem(id: vehicleId, with: decodedBody.updatedVehicle)
+                    }
+                    return .renewSuccessful(token: token)
+                default:
+                    await MainActor.run {
+                        alertTitle = "Application Error"
+                        alertMessage = "Unrecognized response, make sure you are running the latest version"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+            }
+            return .doNothing
+        } catch {
+            await MainActor.run {
+                alertTitle = "Internal Error"
+                alertMessage = "\(error.localizedDescription)"
+                showAlert = true
+            }
+            return .doNothing
+        }
+    }
+    
+    @ApiCallActor func updatingWithSmartcarAsync (_ token: String, _ userId: Int, _ vehicleId: Int) async -> ApiTaskResponse {
+        do {
+            let user = await MainActor.run { self.session.user }
+            if !token.isEmpty && userId > 0, user != nil {
+                
+                nonisolated struct Payload: Codable {
+                    let vehicleId: Int
+                }
+                
+                let jsonData = try VeygoJsonStandard.shared.encoder.encode(Payload.init(vehicleId: vehicleId))
+                let request = veygoCurlRequest(url: "/api/v1/vehicle/update-vehicle-with-sc", method: .post, headers: ["auth": "\(token)$\(userId)"], body: jsonData)
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        alertTitle = "Server Error"
+                        alertMessage = "Invalid protocol"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                    await MainActor.run {
+                        alertTitle = "Server Error"
+                        alertMessage = "Invalid content"
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                
+                switch httpResponse.statusCode {
+                case 200:
+                    nonisolated struct FetchSuccessBody: Decodable {
+                        let updatedVehicle: PublishAdminVehicle
+                    }
+                    
+                    let token = extractToken(from: response, for: "Updating the vehicle with smartcar") ?? ""
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                        await MainActor.run {
+                            alertTitle = "Server Error"
+                            alertMessage = "Invalid content"
+                            showAlert = true
+                        }
+                        return .renewSuccessful(token: token)
+                    }
+                    await MainActor.run {
+                        alertTitle = "Successful"
+                        alertMessage = "Vehicle info updated"
+                        showAlert = true
+                        // update vehicles
+                        vehicles.updateItem(id: vehicleId, with: decodedBody.updatedVehicle)
+                    }
+                    return .renewSuccessful(token: token)
+                case 400:
+                    await MainActor.run {
+                        alertTitle = "Bad Request"
+                        alertMessage = "Invalid vehicle information"
+                        showAlert = true
+                    }
+                    return .doNothing
+                case 401:
+                    await MainActor.run {
+                        alertTitle = "Session Expired"
+                        alertMessage = "Token expired, please login again"
+                        showAlert = true
+                        clearUserTriggered = true
+                    }
+                    return .clearUser
+                case 403:
+                    await MainActor.run {
+                        alertTitle = "Access Denied"
+                        alertMessage = "No admin access, please login as an admin"
+                        showAlert = true
+                        clearUserTriggered = true
+                    }
+                    return .clearUser
+                case 405:
+                    await MainActor.run {
+                        alertTitle = "Internal Error"
+                        alertMessage = "Method not allowed, please contact the developer dev@veygo.rent"
+                        showAlert = true
+                        clearUserTriggered = true
+                    }
+                    return .clearUser
+                case 429:
+                    nonisolated struct FetchSuccessBody: Decodable {
+                        let updatedVehicle: PublishAdminVehicle
+                    }
+                    
+                    let token = extractToken(from: response, for: "Updating the vehicle with smartcar") ?? ""
                     guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
                         await MainActor.run {
                             alertTitle = "Server Error"
