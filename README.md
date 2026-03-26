@@ -1,1 +1,0 @@
-# veygo-apartment-admin-swift
