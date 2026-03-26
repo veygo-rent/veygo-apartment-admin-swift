@@ -22,14 +22,10 @@ struct ContentView: View {
                     .transition(.move(edge: .trailing))
             }
         }
+        .background(Color("MainBG").ignoresSafeArea())
         .animation(.bouncy, value: session.user)
         .onChange(of: session.user) { old, new in
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
-}
-
-
-#Preview {
-    ContentView()
 }

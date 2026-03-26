@@ -8,105 +8,161 @@
 import SwiftUI
 
 private enum RootDestination: String, Identifiable, Hashable {
-    case overview, apartments, vehicles, renters, setting, taxes, tollCompanies, reports, agreements
-    var id: String { self.rawValue }
+    case overview
+    case apartments
+    case vehicles
+    case renters
+    case reports
+    case agreements
+    case taxes
+    case tollCompanies
+    case settings
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .overview:
+            return "Overview"
+        case .apartments:
+            return "Apartments"
+        case .vehicles:
+            return "Vehicles"
+        case .renters:
+            return "Renters"
+        case .reports:
+            return "Reports"
+        case .agreements:
+            return "Agreements"
+        case .taxes:
+            return "Taxes"
+        case .tollCompanies:
+            return "Toll Companies"
+        case .settings:
+            return "Settings"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .overview:
+            return "rectangle.grid.2x2"
+        case .apartments:
+            return "building.2"
+        case .vehicles:
+            return "car.2"
+        case .renters:
+            return "person.3"
+        case .reports:
+            return "chart.bar.doc.horizontal"
+        case .agreements:
+            return "doc.text"
+        case .taxes:
+            return "percent"
+        case .tollCompanies:
+            return "road.lanes"
+        case .settings:
+            return "gear"
+        }
+    }
 }
 
 struct AppView: View {
-    
     @EnvironmentObject private var session: AdminSession
-    @State private var selected: RootDestination = .overview
-    
-    @State private var apartments: [Apartment] = []
-    @State private var renters: [PublishRenter] = []
-    @State private var taxes: [Tax] = []
-    @State private var tollCompanies: [TransponderCompany] = []
-    @State private var aptTaxes: [Int?] = []
-    @State private var vehicles: [PublishAdminVehicle] = []
-    
+    @State private var selected: RootDestination? = .overview
+
     var body: some View {
-        if session.user == nil {
-            Text("Bad Credentials")
-        } else {
-            TabView (selection: $selected) {
-                if session.user!.emailIsValid() {
-                    TabSection("Summary") {
-                        Tab(value: RootDestination.overview) {
-                            OverviewView()
-                        } label: {
-                            Label("Overview", systemImage: "chart.pie")
-                                .environment(\.symbolVariants, selected == .overview ? .fill : .none)
-                        }
-                    }
-                    
-                    if session.user!.employeeTier == .admin {
-                        TabSection("Administration") {
-                            Tab(value: RootDestination.taxes) {
-                                TaxView(taxes: $taxes)
-                            } label: {
-                                Label("Taxes", systemImage: "percent")
-                                    .environment(\.symbolVariants, selected == .taxes ? .fill : .none)
-                            }
-                            
-                            Tab(value: RootDestination.tollCompanies) {
-                                TollCompanyView(tollCompanies: $tollCompanies)
-                            } label: {
-                                Label("Toll Companies", systemImage: "car.front.waves.down")
-                                    .environment(\.symbolVariants, selected == .tollCompanies ? .fill : .none)
-                            }
-                            
-                            Tab(value: RootDestination.apartments) {
-                                ApartmentView(apartments: $apartments, taxes: $taxes)
-                            } label: {
-                                Label("Apartments", systemImage: "building.2")
-                                    .environment(\.symbolVariants, selected == .apartments ? .fill : .none)
-                            }
-                            
-                            Tab(value: RootDestination.reports) {
-                                Text("Reports")
-                            } label: {
-                                Label("Reports", systemImage: "chart.line.text.clipboard")
-                                    .environment(\.symbolVariants, selected == .reports ? .fill : .none)
-                            }
-                        }
-                    }
-                    
-                    TabSection("Rentals") {
-                        Tab(value: RootDestination.renters) {
-                            RenterView(renters: $renters)
-                        } label: {
-                            Label("Renters", systemImage: "person")
-                                .environment(\.symbolVariants, selected == .renters ? .fill : .none)
-                        }
-                        
-                        Tab(value: RootDestination.agreements) {
-                            AgreementView()
-                        } label: {
-                            Label("Agreements", systemImage: "pencil.and.list.clipboard")
-                                .environment(\.symbolVariants, selected == .agreements ? .fill : .none)
-                        }
-
-                        Tab(value: RootDestination.vehicles) {
-                            VehicleView(vehicles: $vehicles)
-                        } label: {
-                            Label("Vehicles", systemImage: "car.rear")
-                                .environment(\.symbolVariants, selected == .vehicles ? .fill : .none)
-                        }
-
-                    }
-                }
-                
-                TabSection("Settings") {
-                    Tab(value: RootDestination.setting) {
-                        SettingView()
-                    } label: {
-                        Label("Setting", systemImage: "gearshape")
-                            .environment(\.symbolVariants, selected == .setting ? .fill : .none)
-                    }
-                }
+        if let user = session.user {
+            NavigationSplitView {
+                sidebar(user: user)
+            } detail: {
+                detailContent
             }
-            .tabViewStyle(.sidebarAdaptable)
-            .scrollContentBackground(.hidden)
+            .navigationSplitViewStyle(.balanced)
+        } else {
+            ContentUnavailableView(
+                "Bad credentials",
+                systemImage: "exclamationmark.triangle",
+                description: Text("Please sign in again to access the admin panel.")
+            )
+            .padding()
         }
+    }
+
+    @ViewBuilder
+    private func sidebar(user: PublishRenter) -> some View {
+        List(selection: $selected) {
+            Section("Workspace") {
+                destinationRow(.overview)
+                destinationRow(.reports)
+            }
+
+            Section("Operations") {
+                destinationRow(.apartments)
+                destinationRow(.vehicles)
+                destinationRow(.renters)
+                destinationRow(.agreements)
+            }
+
+            Section("Configuration") {
+                destinationRow(.taxes)
+                destinationRow(.tollCompanies)
+                destinationRow(.settings)
+            }
+        }
+        .navigationTitle("Admin")
+        .toolbar {
+            ToolbarItem(placement: .bottomBar) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(user.name)
+                        .font(.footnote.weight(.semibold))
+                    Text(user.studentEmail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(32)
+            }
+        }
+    }
+
+    private func destinationRow(_ destination: RootDestination) -> some View {
+        NavigationLink(value: destination) {
+            Label(destination.title, systemImage: destination.symbol)
+        }
+    }
+
+    @ViewBuilder
+    private var detailContent: some View {
+        NavigationStack {
+            if let selected {
+                PlaceholderDetailView(destination: selected)
+            } else {
+                ContentUnavailableView(
+                    "Select a section",
+                    systemImage: "sidebar.left",
+                    description: Text("Choose an item from the sidebar.")
+                )
+            }
+        }
+    }
+}
+
+private struct PlaceholderDetailView: View {
+    let destination: RootDestination
+
+    var body: some View {
+        List {
+            Section {
+                Label(destination.title, systemImage: destination.symbol)
+                    .font(.title3.weight(.semibold))
+            }
+
+            Section("Next Step") {
+                Text("Replace this placeholder with your \(destination.title.lowercased()) screen.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle(destination.title)
     }
 }

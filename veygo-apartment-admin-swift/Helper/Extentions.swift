@@ -7,21 +7,10 @@
 
 import Foundation
 internal import Combine
-import UIKit
 
 extension Array where Element: Identifiable {
     func getItemBy(id: Element.ID) -> Element? {
         return self.first { $0.id == id }
-    }
-    
-    func getIndexBy(id: Element.ID) -> Int? {
-        return self.firstIndex { $0.id == id }
-    }
-    
-    mutating func updateItem(id: Element.ID, with newValue: Element) {
-        if let index = self.getIndexBy(id: id) {
-            self[index] = newValue
-        }
     }
 }
 
@@ -65,11 +54,162 @@ class AdminSession: ObservableObject {
     @Published var user: PublishRenter? = nil
 }
 
-extension UIViewController {
-    func topMostPresented() -> UIViewController {
-        if let nav = self as? UINavigationController { return nav.visibleViewController?.topMostPresented() ?? nav }
-        if let tab = self as? UITabBarController { return tab.selectedViewController?.topMostPresented() ?? tab }
-        if let presented = presentedViewController { return presented.topMostPresented() }
-        return self
+extension Apartment {
+    func localizedDate(for date: Date) -> String {
+        let currentTimeZone = TimeZone.current
+        let apartmentTimeZone = TimeZone(identifier: self.timezone) ?? currentTimeZone
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeZone = apartmentTimeZone
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+
+        let formattedDate = dateFormatter.string(from: date)
+
+        let currentAbbreviation = currentTimeZone.abbreviation(for: date)
+        let apartmentAbbreviation = apartmentTimeZone.abbreviation(for: date)
+
+        if apartmentAbbreviation != nil && apartmentAbbreviation != currentAbbreviation {
+            return "\(formattedDate) \(apartmentAbbreviation!)"
+        } else {
+            return formattedDate
+        }
     }
 }
+
+extension TripDetailedInfo {
+    func localizedStartDate() -> String {
+        let currentTimeZone = TimeZone.current
+        let apartmentTimeZone = TimeZone(identifier: self.apartment.timezone) ?? currentTimeZone
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeZone = apartmentTimeZone
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+
+        let pickupDate = self.agreement.rsvpPickupTime
+        let formattedDate = dateFormatter.string(from: pickupDate)
+
+        let currentAbbreviation = currentTimeZone.abbreviation(for: pickupDate)
+        let apartmentAbbreviation = apartmentTimeZone.abbreviation(for: pickupDate)
+
+        if apartmentAbbreviation != nil && apartmentAbbreviation != currentAbbreviation {
+            return "\(formattedDate) \(apartmentAbbreviation!)"
+        } else {
+            return formattedDate
+        }
+    }
+    func localizedEndDate() -> String {
+        let currentTimeZone = TimeZone.current
+        let apartmentTimeZone = TimeZone(identifier: self.apartment.timezone) ?? currentTimeZone
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeZone = apartmentTimeZone
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+
+        let pickupDate = self.agreement.rsvpDropOffTime
+        let formattedDate = dateFormatter.string(from: pickupDate)
+
+        let currentAbbreviation = currentTimeZone.abbreviation(for: pickupDate)
+        let apartmentAbbreviation = apartmentTimeZone.abbreviation(for: pickupDate)
+
+        if apartmentAbbreviation != nil && apartmentAbbreviation != currentAbbreviation {
+            return "\(formattedDate) \(apartmentAbbreviation!)"
+        } else {
+            return formattedDate
+        }
+    }
+}
+
+extension TripInfo {
+    func localizedStartDate() -> String {
+        let currentTimeZone = TimeZone.current
+        let apartmentTimeZone = TimeZone(identifier: self.apartmentTimezone) ?? currentTimeZone
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeZone = apartmentTimeZone
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+
+        let pickupDate = self.agreement.rsvpPickupTime
+        let formattedDate = dateFormatter.string(from: pickupDate)
+
+        let currentAbbreviation = currentTimeZone.abbreviation(for: pickupDate)
+        let apartmentAbbreviation = apartmentTimeZone.abbreviation(for: pickupDate)
+
+        if apartmentAbbreviation != nil && apartmentAbbreviation != currentAbbreviation {
+            return "\(formattedDate) \(apartmentAbbreviation!)"
+        } else {
+            return formattedDate
+        }
+    }
+}
+
+struct SignupSession {
+    var name: Optional<String> = nil
+    var date_of_birth: Optional<String> = nil  // MM/DD/YYYY
+    var phone: Optional<String> = nil
+    var student_email: Optional<String> = nil
+    var password: Optional<String> = nil
+}
+
+extension Date {
+    /// Returns the next quarter-hour date after the current date.
+    func nextQuarterHour() -> Date {
+        let calendar = Calendar.current
+        let minute = calendar.component(.minute, from: self)
+        let remainder = minute % 15
+        let minutesToAdd = remainder == 0 ? 15 : 15 - remainder
+
+        let dateWithoutSeconds = calendar.date(
+            bySettingHour: calendar.component(.hour, from: self),
+            minute: minute,
+            second: 0,
+            of: self
+        )!
+
+        return calendar.date(byAdding: .minute, value: minutesToAdd, to: dateWithoutSeconds)!
+    }
+}
+
+@propertyWrapper
+public struct CodableExplicitNull<Wrapped> {
+    public var wrappedValue: Wrapped?
+    
+    public init(wrappedValue: Wrapped?) {
+        self.wrappedValue = wrappedValue
+    }
+}
+
+extension CodableExplicitNull: Encodable where Wrapped: Encodable {
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch wrappedValue {
+        case .some(let value): try container.encode(value)
+        case .none: try container.encodeNil()
+        }
+    }
+}
+
+extension CodableExplicitNull: Decodable where Wrapped: Decodable {
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if !container.decodeNil() {
+            wrappedValue = try container.decode(Wrapped.self)
+        }
+    }
+}
+
+extension CodableExplicitNull: Equatable where Wrapped: Equatable { }
+
+extension KeyedDecodingContainer {
+    
+    public func decode<Wrapped>(_ type: CodableExplicitNull<Wrapped>.Type,
+                                forKey key: KeyedDecodingContainer<K>.Key) throws -> CodableExplicitNull<Wrapped> where Wrapped: Decodable {
+        return try decodeIfPresent(CodableExplicitNull<Wrapped>.self, forKey: key) ?? CodableExplicitNull<Wrapped>(wrappedValue: nil)
+    }
+}
+

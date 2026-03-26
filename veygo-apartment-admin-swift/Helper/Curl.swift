@@ -14,16 +14,22 @@ public enum RequestMethods: String {
     case delete = "DELETE"
 }
 
-nonisolated public func veygoCurlRequest (url: String, method: RequestMethods, headers: [String: String] = [:], body: Data? = nil) -> URLRequest {
+nonisolated public func veygoCurlRequest (url: String, method: RequestMethods, headers: [String: String] = [:], body: Data? = nil, timeout: TimeInterval = 10.0) -> URLRequest {
     let BASE_PATH = "https://dev.veygo.rent"
     guard let fullURL = URL(string: "\(BASE_PATH)\(url)") else {
         fatalError("Invalid URL: \(BASE_PATH)\(url)")
     }
 
     var request = URLRequest(url: fullURL)
+    request.timeoutInterval = timeout
     request.httpMethod = method.rawValue
     request.allHTTPHeaderFields = headers
     request.httpBody = body
+    
+    request.assumesHTTP3Capable = true
+    
+    let uuid = UUID().uuidString
+    request.setValue(uuid, forHTTPHeaderField: "Request-ID")
     
     if headers["Content-Type"] == nil && method != .get {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

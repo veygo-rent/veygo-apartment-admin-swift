@@ -23,7 +23,7 @@ struct LaunchScreenView<Destination: View>: View {
                 .scaledToFit()
                 .frame(width: 250, height: 250)
                 .offset(y: -50)  // 上移50个单位
-            Text("Veygo Apartment Admin")
+            Text("Veygo Admin")
                 .font(.system(size: 36, weight: .semibold, design: .default))
                 .foregroundColor(Color("TextBlackSecondary"))
                 
@@ -51,11 +51,5 @@ struct LaunchScreenView<Destination: View>: View {
             destination()  // 进入登录页
                 .interactiveDismissDisabled(true)
         }
-    }
-}
-
-#Preview {
-    LaunchScreenView(didLoad: .constant(true)){
-        ContentView()
     }
 }

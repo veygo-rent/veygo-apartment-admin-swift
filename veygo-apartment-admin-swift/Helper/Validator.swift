@@ -33,7 +33,8 @@ public struct AgeValidator {
 }
 
 public struct EmailValidator {
-    var email: String
+    let email: String
+    let acceptedDomains: [String]
     var isValidEmail: Bool {
         // RFC 5321 limit (commonly used threshold)
         guard email.count <= 254 else { return false }
@@ -43,8 +44,11 @@ public struct EmailValidator {
         let range = NSRange(email.startIndex..<email.endIndex, in: email)
         return regex?.firstMatch(in: email, options: [], range: range) != nil
     }
-    mutating func setEmail(to email: String) {
-        self.email = email
+    var isValidUniversity: Bool {
+        guard let domain = email.split(separator: "@").last.map(String.init) else {
+            return false
+        }
+        return acceptedDomains.contains(domain) || domain == "veygo.rent"
     }
 }
 

@@ -5,12 +5,14 @@
 //  Created by Shenghong Zhou on 6/7/25.
 //
 
-@preconcurrency import Stripe
 import SwiftUI
-import SmartcarAuth
+
+import UserNotifications
+
+@preconcurrency import Stripe
 
 @main
-struct veygo_apartment_admin_swift: App {
+struct veygo_apartment_swift: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate: AppDelegate
     
     @State private var showAlert: Bool = false
@@ -21,10 +23,11 @@ struct veygo_apartment_admin_swift: App {
     @StateObject var session = AdminSession()
     
     @State private var didLoad = false
-    
+
     init() {
         StripeAPI.defaultPublishableKey = "pk_live_51QzCjkL87NN9tQEdbASm7SXLCkcDPiwlEbBpOVQk5wZcjOPISrtTVFfK1SFKIlqyoksRIHusp5UcRYJLvZwkyK0a00kdPmuxhM"
     }
+
     var body: some Scene {
         WindowGroup {
             LaunchScreenView(didLoad: $didLoad) {
@@ -80,12 +83,7 @@ struct veygo_apartment_admin_swift: App {
                 
                 switch httpResponse.statusCode {
                 case 200:
-                    nonisolated struct FetchSuccessBody: Decodable {
-                        let admin: PublishRenter
-                    }
-                    
-                    let token = extractToken(from: response, for: "Renewing token") ?? ""
-                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(FetchSuccessBody.self, from: data) else {
+                    guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: data) else {
                         await MainActor.run {
                             alertTitle = "Server Error"
                             alertMessage = "Invalid content"
@@ -94,29 +92,32 @@ struct veygo_apartment_admin_swift: App {
                         return .doNothing
                     }
                     await MainActor.run {
-                        self.session.user = decodedBody.admin
+                        self.session.user = decodedBody
                     }
-                    return .renewSuccessful(token: token)
+                    return .doNothing
                 case 401:
-                    await MainActor.run {
-                        alertTitle = "Session Expired"
-                        alertMessage = "Token expired, please login again"
-                        showAlert = true
-                        clearUserTriggered = true
-                    }
                     return .clearUser
                 case 405:
-                    await MainActor.run {
-                        alertTitle = "Internal Error"
-                        alertMessage = "Method not allowed, please contact the developer dev@veygo.rent"
-                        showAlert = true
-                        clearUserTriggered = true
+                    if let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(ErrorResponse.self, from: data) {
+                        await MainActor.run {
+                            alertTitle = decodedBody.title
+                            alertMessage = decodedBody.message
+                            showAlert = true
+                        }
+                    } else {
+                        let decodedBody = ErrorResponse.E405
+                        await MainActor.run {
+                            alertTitle = decodedBody.title
+                            alertMessage = decodedBody.message
+                            showAlert = true
+                        }
                     }
-                    return .clearUser
+                    return .doNothing
                 default:
+                    let body = ErrorResponse.E_DEFAULT
                     await MainActor.run {
-                        alertTitle = "Application Error"
-                        alertMessage = "Unrecognized response, make sure you are running the latest version"
+                        alertTitle = body.title
+                        alertMessage = body.message
                         showAlert = true
                     }
                     return .doNothing
@@ -132,45 +133,14 @@ struct veygo_apartment_admin_swift: App {
             return .doNothing
         }
     }
+
 }
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     
-    static private(set) var shared: AppDelegate! = nil
-    
-    var smartcar: SmartcarAuth?
-    
-    func beginSmartcarAuth(from presenter: UIViewController, vin: String) {
-        func completionHandler(code: String?, state: String?, virtualKeyUrl: String?, err: AuthorizationError?,) -> Void {
-            if let code {
-                UserDefaults.standard.set(code, forKey: "smartcar_exchange_code")
-            }
-        }
-        
-        let clientId = "9871c60e-44d8-4a0d-9d5e-9b15e17c4de7"
-        
-        smartcar = SmartcarAuth(
-            clientId: clientId,
-            redirectUri: "veygo-admin://smartcar",
-            scope: [
-                "required:read_vin",
-                "required:read_vehicle_info",
-                "required:read_odometer",
-                "required:control_security",
-                "required:read_fuel",
-                "required:read_location",
-                "required:read_security"
-            ],
-            completionHandler: completionHandler,
-        )
-        var builder = smartcar!.authUrlBuilder()
-        builder = builder.setSingleSelect(singleSelect: true).setSingleSelectVin(vin: vin)
-        let url = builder.build()
-        smartcar!.launchAuthFlow(url: url, viewController: presenter)
-    }
-    
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        AppDelegate.self.shared = self
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
+    ) -> Bool {
         return true
     }
     
@@ -181,14 +151,5 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         #endif
         UserDefaults.standard.set(tokenString, forKey: "apns_token")
     }
-    
-    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
-        let config = UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
-        config.delegateClass = SceneDelegate.self
-        return config
-    }
-}
-
-class SceneDelegate: NSObject, UIWindowSceneDelegate {
     
 }

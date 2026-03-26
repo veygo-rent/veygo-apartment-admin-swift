@@ -100,29 +100,31 @@ struct LoginView: View {
             Text(alertMessage)
         }
     }
-
+    
     @ApiCallActor func loginUserAsync() async -> ApiTaskResponse {
         do {
             let body = await ["email": email, "password": password]
-            let jsonData = try JSONSerialization.data(withJSONObject: body)
+            let jsonData: Data = try VeygoJsonStandard.shared.encoder.encode(body)
             
             let request = veygoCurlRequest(url: "/api/v1/admin/login", method: .post, body: jsonData)
             
             let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
+                let body = ErrorResponse.WRONG_PROTOCOL
                 await MainActor.run {
-                    alertTitle = "Server Error"
-                    alertMessage = "Invalid protocol"
+                    alertTitle = body.title
+                    alertMessage = body.message
                     showAlert = true
                 }
                 return .doNothing
             }
             
             guard httpResponse.value(forHTTPHeaderField: "Content-Type") == "application/json" else {
+                let body = ErrorResponse.E_DEFAULT
                 await MainActor.run {
-                    alertTitle = "Server Error"
-                    alertMessage = "Invalid content"
+                    alertTitle = body.title
+                    alertMessage = body.message
                     showAlert = true
                 }
                 return .doNothing
@@ -130,51 +132,92 @@ struct LoginView: View {
             
             switch httpResponse.statusCode {
             case 200:
-                nonisolated struct LoginSuccessBody: Decodable {
-                    let admin: PublishRenter
-                }
-                
                 let token = extractToken(from: response, for: "Logging in") ?? ""
-                guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(LoginSuccessBody.self, from: data) else {
+                guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(PublishRenter.self, from: data) else {
                     await MainActor.run {
                         alertTitle = "Server Error"
                         alertMessage = "Invalid content"
                         showAlert = true
                     }
-                    return .renewSuccessful(token: token)
+                    return .doNothing
                 }
                 await MainActor.run {
-                    self.session.user = decodedBody.admin
+                    self.session.user = decodedBody
                 }
-                return .loginSuccessful(userId: decodedBody.admin.id, token: token)
+                return .loginSuccessful(userId: decodedBody.id, token: token)
             case 401:
-                await MainActor.run {
-                    alertTitle = "Login Failed"
-                    alertMessage = "Wrong email or password"
-                    showAlert = true
-                    clearUserTriggered = true
+                if let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(ErrorResponse.self, from: data) {
+                    await MainActor.run {
+                        alertTitle = decodedBody.title
+                        alertMessage = decodedBody.message
+                        showAlert = true
+                        clearUserTriggered = true
+                    }
+                } else {
+                    let decodedBody = ErrorResponse.E401
+                    await MainActor.run {
+                        alertTitle = decodedBody.title
+                        alertMessage = decodedBody.message
+                        showAlert = true
+                        clearUserTriggered = true
+                    }
                 }
                 return .clearUser
             case 405:
-                await MainActor.run {
-                    alertTitle = "Internal Error"
-                    alertMessage = "Method not allowed, please contact the developer dev@veygo.rent"
-                    showAlert = true
-                    clearUserTriggered = true
+                if let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(ErrorResponse.self, from: data) {
+                    await MainActor.run {
+                        alertTitle = decodedBody.title
+                        alertMessage = decodedBody.message
+                        showAlert = true
+                    }
+                } else {
+                    let decodedBody = ErrorResponse.E405
+                    await MainActor.run {
+                        alertTitle = decodedBody.title
+                        alertMessage = decodedBody.message
+                        showAlert = true
+                    }
                 }
-                return .clearUser
+                return .doNothing
             default:
+                let body = ErrorResponse.E_DEFAULT
                 await MainActor.run {
-                    alertTitle = "Application Error"
-                    alertMessage = "Unrecognized response, make sure you are running the latest version"
+                    alertTitle = body.title
+                    alertMessage = "\(body.message) (\(httpResponse.statusCode))"
                     showAlert = true
                 }
                 return .doNothing
             }
+        } catch let error as URLError {
+            switch error.code {
+            case .timedOut:
+                let body = ErrorResponse.E_TIME_OUT
+                await MainActor.run {
+                    alertTitle = body.title
+                    alertMessage = body.message
+                    showAlert = true
+                }
+            case .notConnectedToInternet:
+                let body = ErrorResponse.E_NO_INTERNET
+                await MainActor.run {
+                    alertTitle = body.title
+                    alertMessage = body.message
+                    showAlert = true
+                }
+            default:
+                let body = ErrorResponse.E_DEFAULT
+                await MainActor.run {
+                    alertTitle = body.title
+                    alertMessage = body.message
+                    showAlert = true
+                }
+            }
+            return .doNothing
         } catch {
+            let body = ErrorResponse.E_DEFAULT
             await MainActor.run {
-                alertTitle = "Internal Error"
-                alertMessage = "\(error.localizedDescription)"
+                alertTitle = body.title
+                alertMessage = body.message
                 showAlert = true
             }
             return .doNothing
