@@ -1,46 +1,34 @@
 {
   "fill" : {
-    "automatic-gradient" : "display-p3:0.90508,0.99977,1.00000,1.00000"
+    "linear-gradient" : [
+      "display-p3:0.92978,0.97594,1.00000,1.00000",
+      "display-p3:0.90747,1.00000,0.93648,1.00000"
+    ]
   },
   "groups" : [
     {
-      "blur-material" : 0,
+      "blur-material" : null,
+      "hidden" : false,
       "layers" : [
         {
-          "blend-mode" : "normal",
-          "fill" : "automatic",
-          "glass-specializations" : [
-            {
-              "value" : false
-            },
-            {
-              "appearance" : "dark",
-              "value" : false
-            }
-          ],
+          "glass" : false,
           "image-name" : "Veygo_logo.png",
           "name" : "Veygo_logo",
           "position" : {
             "scale" : 0.16,
             "translation-in-points" : [
-              -0.4125119398076933,
-              1.8128377611904156
+              -4.2265625,
+              -11.171875
             ]
           }
         }
       ],
       "lighting" : "individual",
-      "opacity-specializations" : [
-        {
-          "appearance" : "dark",
-          "value" : 1
-        }
-      ],
       "shadow" : {
         "kind" : "neutral",
-        "opacity" : 1
+        "opacity" : 0.5
       },
-      "specular" : false,
+      "specular" : true,
       "translucency" : {
         "enabled" : true,
         "value" : 0.5
