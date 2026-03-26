@@ -9,6 +9,10 @@ import SwiftUI
 
 enum SettingDestination: Hashable {
     case deleteAccount
+    case privacyPolicy
+    case memberAgreement
+    case rentalAgreement
+    case termsOfUse
 }
 
 struct SettingView: View {
@@ -24,6 +28,20 @@ struct SettingView: View {
     var body: some View {
         NavigationStack (path: $path) {
             List {
+                
+                Section {
+                    NavigationLink("Privacy Policy", value: SettingDestination.privacyPolicy)
+                    NavigationLink("Member Agreement", value: SettingDestination.memberAgreement)
+                    NavigationLink("Rental Agreement", value: SettingDestination.rentalAgreement)
+                    NavigationLink("Terms of Use", value: SettingDestination.termsOfUse)
+                } header: {
+                    Text("Legal")
+                        .fontWeight(.light)
+                }
+                .listRowBackground(Color("CardBG"))
+                .foregroundStyle(Color("TextBlackSecondary"))
+                .listSectionSeparator(.hidden)
+                
                 Section {
                     Button(role: .destructive) {
                         Task {
@@ -62,6 +80,14 @@ struct SettingView: View {
                 switch destination {
                 case .deleteAccount:
                     DeleteAccountView()
+                case .memberAgreement:
+                    TermsView(term: .membershipAgreement)
+                case .rentalAgreement:
+                    TermsView(term: .rentalAgreement)
+                case .privacyPolicy:
+                    TermsView(term: .privacyPolicy)
+                case .termsOfUse:
+                    TermsView(term: .termsOfUse)
                 }
             }
             .alert(alertTitle, isPresented: $showAlert) {
@@ -151,16 +177,12 @@ private struct DeleteAccountView: View {
 
     var body: some View {
         List {
-            Section {
+            Section("Important") {
                 Text("Deleting your account is permanent and cannot be reversed.")
+                    .listRowBackground(Color("CardBG"))
                 Toggle("I understand and want to continue", isOn: $confirmedDeletion)
-            } header: {
-                Text("Important")
-                    .fontWeight(.light)
+                    .listRowBackground(Color("CardBG"))
             }
-            .listRowBackground(Color("CardBG"))
-            .foregroundStyle(Color("TextBlackSecondary"))
-            .listSectionSeparator(.hidden)
 
             Section {
                 Button(role: .destructive) {
@@ -179,18 +201,11 @@ private struct DeleteAccountView: View {
                     Text(isSubmitting ? "Submitting..." : "Request Account Deletion")
                 }
                 .disabled(!confirmedDeletion || isSubmitting)
-            } header: {
-                Text("Action")
-                    .fontWeight(.light)
+                .listRowBackground(Color("CardBG"))
             }
-            .listRowBackground(Color("CardBG"))
-            .foregroundStyle(Color("TextBlackSecondary"))
-            .listSectionSeparator(.hidden)
         }
-        .listStyle(.automatic)
-        .scrollIndicators(.hidden)
         .scrollContentBackground(.hidden)
-        .background(Color("MainBG"), ignoresSafeAreaEdges: .all)
+        .background(Color.mainBG)
         .navigationTitle("Delete Account")
     }
 
