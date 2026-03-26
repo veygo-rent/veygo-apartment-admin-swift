@@ -115,19 +115,6 @@ struct AppView: View {
         }
         .navigationTitle("Admin")
         .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .bottomBar) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(user.name)
-                        .font(.footnote.weight(.semibold))
-                    Text(user.studentEmail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(32)
-            }
-        }
     }
 
     private func destinationRow(_ destination: RootDestination) -> some View {
