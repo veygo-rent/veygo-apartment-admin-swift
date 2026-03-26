@@ -1,15 +1,6 @@
 {
-  "originHash" : "324f11bc2667ffe65b8ed0b2ea10d7b8e083a7c9776db3659e9c65f3a93c177e",
+  "originHash" : "f8a0db239c6de4472428fbeb321c7ff5b436762d439ad53f723aadd3e23e5cb2",
   "pins" : [
-    {
-      "identity" : "ios-sdk",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/smartcar/ios-sdk.git",
-      "state" : {
-        "revision" : "b6d9e2cdc2e90dbd6a2ee2d5888be1bcaf7a5e52",
-        "version" : "6.2.0"
-      }
-    },
     {
       "identity" : "stripe-ios",
       "kind" : "remoteSourceControl",
