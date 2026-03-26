@@ -47,7 +47,7 @@ struct LoginView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 250, height: 250)
-                Text("Veygo Apartment Admin")
+                Text("Veygo Admin")
                     .font(.system(size: 36, weight: .semibold, design: .default))
                     .foregroundColor(Color("TextBlackSecondary"))
 
@@ -82,11 +82,17 @@ struct LoginView: View {
                 .padding(.leading, 10)
 
                 Spacer()
-                LegalText()
+                TextWithLink(fullText: "By using this App, you agree to its Terms of Use.", highlightedTexts: [
+                    ("Terms of Use", { })
+                ])
+                TextWithLink(fullText: "By signing in, you agree to Veygo’s Privacy Policy and Membership Agreement.", highlightedTexts: [
+                    ("Membership Agreement", { }),
+                    ("Privacy Policy", { })
+                ])
             }
             .padding(.horizontal, 400)
             .navigationDestination(isPresented: $goToResetView) {
-                Text("TODO: Reset Password")
+                ResetView(currentEmail: email)
             }
             .background(Color("MainBG").ignoresSafeArea(.all))
         }

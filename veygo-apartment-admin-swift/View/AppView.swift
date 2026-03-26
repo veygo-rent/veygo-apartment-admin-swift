@@ -52,9 +52,9 @@ private enum RootDestination: String, Identifiable, Hashable {
         case .vehicles:
             return "car.2"
         case .renters:
-            return "person.3"
+            return "person.2"
         case .reports:
-            return "chart.bar.doc.horizontal"
+            return "waveform.path.ecg.text.clipboard"
         case .agreements:
             return "doc.text"
         case .taxes:
@@ -68,8 +68,11 @@ private enum RootDestination: String, Identifiable, Hashable {
 }
 
 struct AppView: View {
+    
     @EnvironmentObject private var session: AdminSession
-    @State private var selected: RootDestination? = .overview
+    @State private var selected: RootDestination? = nil
+    
+    @State private var settingPath: [SettingDestination] = []
 
     var body: some View {
         if let user = session.user {
@@ -111,6 +114,7 @@ struct AppView: View {
             }
         }
         .navigationTitle("Admin")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .bottomBar) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -130,20 +134,26 @@ struct AppView: View {
         NavigationLink(value: destination) {
             Label(destination.title, systemImage: destination.symbol)
         }
+        .environment(\.symbolVariants, selected == destination ? .fill : .none)
     }
 
     @ViewBuilder
     private var detailContent: some View {
-        NavigationStack {
-            if let selected {
+        if let selected {
+            switch selected {
+            case .settings:
+                SettingView(path: $settingPath)
+            default:
                 PlaceholderDetailView(destination: selected)
-            } else {
-                ContentUnavailableView(
-                    "Select a section",
-                    systemImage: "sidebar.left",
-                    description: Text("Choose an item from the sidebar.")
-                )
             }
+        } else {
+            ContentUnavailableView(
+                "Select a section",
+                systemImage: "sidebar.left",
+                description: Text("Choose an item from the sidebar.")
+            )
+            .scrollContentBackground(.hidden)
+            .background(Color.mainBG)
         }
     }
 }
@@ -152,17 +162,21 @@ private struct PlaceholderDetailView: View {
     let destination: RootDestination
 
     var body: some View {
-        List {
-            Section {
-                Label(destination.title, systemImage: destination.symbol)
-                    .font(.title3.weight(.semibold))
-            }
+        NavigationStack {
+            List {
+                Section {
+                    Label(destination.title, systemImage: destination.symbol)
+                        .font(.title3.weight(.semibold))
+                }
 
-            Section("Next Step") {
-                Text("Replace this placeholder with your \(destination.title.lowercased()) screen.")
-                    .foregroundStyle(.secondary)
+                Section("Next Step") {
+                    Text("Replace this placeholder with your \(destination.title.lowercased()) screen.")
+                        .foregroundStyle(.secondary)
+                }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.mainBG)
+            .navigationTitle(destination.title)
         }
-        .navigationTitle(destination.title)
     }
 }

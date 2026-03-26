@@ -1,56 +1,39 @@
 //
 //  TextInputField.swift
-//  veygo-apartment-admin-swift
+//  veygo-apartment-swift
 //
-//  Created by Shenghong Zhou on 6/7/25.
+//  Created by 魔法玛丽大炮 on 5/19/25.
 //
-
 import SwiftUI
 
 struct TextInputField: View {
     let placeholder: String
     @Binding var text: String
     var isSecure: Bool = false
-    
-    var endingString: String? = nil
+    var textFont: Font = .body
     
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color("TextFieldBg"))
-                .stroke(Color("TextFieldFrame"), lineWidth: 2) // 边框颜色
-                .frame(height: 42)
-            
+        Group {
             if isSecure {
                 SecureField(placeholder, text: $text)
-                    .frame(height: 42)
+                    .font(textFont)
+                    .kerning(2)
+                    .padding(.vertical, 10)
                     .foregroundColor(Color("TextFieldWordColor"))
                     .padding(.leading, 16)
-                    .kerning(2)
+                    .background(Color("TextFieldBg"))
+                    .cornerRadius(14)
             } else {
-                if let endingString = endingString {
-                    HStack {
-                        TextField(placeholder, text: $text)
-                            .frame(height: 42)
-                            .foregroundColor(Color("TextFieldWordColor"))
-                            .padding(.leading, 16)
-                            .kerning(1.5)
-                        Text(endingString)
-                            .foregroundColor(Color("TextFieldWordColor"))
-                            .padding(.trailing, 16)
-                    }
-                } else {
-                    TextField(placeholder, text: $text)
-                        .frame(height: 42)
-                        .foregroundColor(Color("TextFieldWordColor"))
-                        .padding(.leading, 16)
-                        .kerning(1.5)
-                }
+                TextField(placeholder, text: $text)
+                    .font(textFont)
+                    .kerning(1.5)
+                    .padding(.vertical, 10)
+                    .foregroundColor(Color("TextFieldWordColor"))
+                    .padding(.leading, 16)
+                    .background(Color("TextFieldBg"))
+                    .cornerRadius(14)
             }
         }
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
     }
-}
-
-#Preview {
-    TextInputField(placeholder: "Email", text: .constant(""))
 }
