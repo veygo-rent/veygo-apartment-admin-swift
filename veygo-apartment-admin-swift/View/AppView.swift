@@ -161,6 +161,8 @@ struct AppView: View {
     private var detailContent: some View {
         if let selected {
             switch selected {
+            case .renters:
+                RenterView()
             case .settings:
                 SettingView(path: $settingPath)
             default:
