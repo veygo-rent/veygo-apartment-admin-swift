@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct RentersStats: Decodable {
+nonisolated struct RentersStats: Decodable {
     let total: Int
     let active: Int
     let activePaid: Int
