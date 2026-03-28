@@ -38,7 +38,7 @@ nonisolated struct LocationWithVehicles: Decodable, Identifiable {
     var duration: TimeInterval? = nil
 }
 
-nonisolated struct TripInfo: Codable, Identifiable {
+nonisolated struct TripInfo: Decodable, Identifiable {
     var id: Agreement.ID { agreement.id }
     let agreement: Agreement
     let apartmentTimezone: String
@@ -46,7 +46,7 @@ nonisolated struct TripInfo: Codable, Identifiable {
     let vehicleName: String
 }
 
-nonisolated struct TripDetailedInfo: Codable, Identifiable {
+nonisolated struct TripDetailedInfo: Decodable, Identifiable {
     var id: Agreement.ID { agreement.id }
     let agreement: Agreement
     let vehicle: PublishRenterVehicle
@@ -60,8 +60,17 @@ nonisolated struct TripDetailedInfo: Codable, Identifiable {
     let vehicleSnapshotAfter: VehicleSnapshot?
 }
 
-nonisolated struct FilePath: Codable {
+nonisolated struct FilePath: Decodable {
     let filePath: String
+}
+
+nonisolated struct FileLink: Decodable {
+    let fileLink: String
+}
+
+nonisolated struct RenterNeedVerify: Decodable {
+    let renter: PublishRenter
+    let fileLink: FileLink
 }
 
 nonisolated struct GenerateSnapshotRequest: Codable {
