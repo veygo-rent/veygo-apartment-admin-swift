@@ -24,6 +24,7 @@ private struct RenterActionTile: Identifiable {
     let iconColor: Color
     let badgeColor: Color
     let destination: RenterDestination
+    let requiresAdminStatus: Bool
 
     static let tiles: [RenterActionTile] = [
         RenterActionTile(
@@ -34,7 +35,8 @@ private struct RenterActionTile: Identifiable {
             badgeText: nil,
             iconColor: .blue,
             badgeColor: .secondary,
-            destination: .lookupRenter
+            destination: .lookupRenter,
+            requiresAdminStatus: false
         ),
         RenterActionTile(
             id: "approve-license",
@@ -44,27 +46,30 @@ private struct RenterActionTile: Identifiable {
             badgeText: "12 Pending",
             iconColor: .green,
             badgeColor: .orange,
-            destination: .approveLicense
+            destination: .approveLicense,
+            requiresAdminStatus: true
         ),
         RenterActionTile(
             id: "approve-lease",
             title: "Approve Lease",
             subtitle: "Review lease documents and verify apartment assignment.",
             symbol: "doc.badge.clock",
-            badgeText: nil,
+            badgeText: "12 Pending",
             iconColor: .indigo,
             badgeColor: .orange,
-            destination: .approveLease
+            destination: .approveLease,
+            requiresAdminStatus: true
         ),
         RenterActionTile(
             id: "approve-insurance",
             title: "Approve Insurance",
             subtitle: "Validate insurance policy image and expiration.",
             symbol: "checkmark.shield",
-            badgeText: nil,
+            badgeText: "12 Pending",
             iconColor: .teal,
-            badgeColor: .secondary,
-            destination: .approveInsurance
+            badgeColor: .orange,
+            destination: .approveInsurance,
+            requiresAdminStatus: true
         ),
         RenterActionTile(
             id: "lookup-dnr",
@@ -74,47 +79,55 @@ private struct RenterActionTile: Identifiable {
             badgeText: nil,
             iconColor: .red,
             badgeColor: .secondary,
-            destination: .lookupDoNotRent
+            destination: .lookupDoNotRent,
+            requiresAdminStatus: false
         )
     ]
 }
 
 struct RenterView: View {
+    
+    @EnvironmentObject private var session: AdminSession
+    
     private let tileSpacing: CGFloat = 26
     private let minimumTileWidth: CGFloat = 180
     private let maximumTileWidth: CGFloat = 260
 
     var body: some View {
-        NavigationStack {
-            ScrollView(.vertical) {
-                LazyVGrid(
-                    columns: [
-                        GridItem(.adaptive(minimum: minimumTileWidth, maximum: maximumTileWidth), spacing: tileSpacing)
-                    ],
-                    spacing: tileSpacing
-                ) {
-                    ForEach(RenterActionTile.tiles) { tile in
-                        NavigationLink {
-                            destinationView(for: tile.destination)
-                        } label: {
-                            TileView(
-                                title: tile.title,
-                                subtitle: tile.subtitle,
-                                symbol: tile.symbol,
-                                badgeText: tile.badgeText,
-                                iconColor: tile.iconColor,
-                                badgeColor: tile.badgeColor
-                            )
+        if let admin = session.user {
+            NavigationStack {
+                ScrollView(.vertical) {
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.adaptive(minimum: minimumTileWidth, maximum: maximumTileWidth), spacing: tileSpacing)
+                        ],
+                        spacing: tileSpacing
+                    ) {
+                        ForEach(RenterActionTile.tiles) { tile in
+                            if tile.requiresAdminStatus && admin.employeeTier == EmployeeTier.admin || !tile.requiresAdminStatus {
+                                NavigationLink {
+                                    destinationView(for: tile.destination)
+                                } label: {
+                                    TileView(
+                                        title: tile.title,
+                                        subtitle: tile.subtitle,
+                                        symbol: tile.symbol,
+                                        badgeText: tile.badgeText,
+                                        iconColor: tile.iconColor,
+                                        badgeColor: tile.badgeColor
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 20)
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.mainBG)
+                .navigationTitle("Renters")
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.mainBG)
-            .navigationTitle("Renters")
         }
     }
 
