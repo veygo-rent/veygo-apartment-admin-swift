@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UIKit
+import PDFKit
 
 struct DriversLicenseView: View {
     @EnvironmentObject private var session: AdminSession
@@ -14,6 +15,8 @@ struct DriversLicenseView: View {
 
     @State private var renter: PublishRenter?
     @State private var loadedImage: UIImage?
+    @State private var loadedPdfData: Data?
+    @State private var rotatedImageCache: [Int: UIImage] = [:]
     @State private var isLoading = false
     @State private var rotationQuarterTurns: Int = 0
 
@@ -28,7 +31,7 @@ struct DriversLicenseView: View {
             return nil
         }
         let normalizedTurns = ((rotationQuarterTurns % 4) + 4) % 4
-        return loadedImage.rotated(byQuarterTurns: normalizedTurns)
+        return rotatedImageCache[normalizedTurns] ?? loadedImage.rotated(byQuarterTurns: normalizedTurns)
     }
 
     private var measuredDisplayFrame: CGSize? {
@@ -49,7 +52,15 @@ struct DriversLicenseView: View {
             VStack(spacing: 16) {
                 if isLoading {
                     LoadingView()
-                        .frame(height: 220)
+                        .frame(width: 320, height: 220)
+                        .cornerRadius(12)
+                } else if let loadedPdfData {
+                    PDFDocumentContainerView(pdfData: loadedPdfData)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 560)
+                        .padding()
+                        .background(Color.cardBG)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 } else if let displayedImage {
                     VStack {
                         Image(uiImage: displayedImage)
@@ -186,10 +197,12 @@ struct DriversLicenseView: View {
                 await MainActor.run {
                     renter = decodedBody.renter
                     loadedImage = nil
+                    loadedPdfData = nil
+                    rotatedImageCache = [:]
                     rotationQuarterTurns = 0
                 }
                 if let imageURL = URL(string: decodedBody.fileLink.fileLink) {
-                    await loadImageAsync(imageURL)
+                    await loadDocumentAsync(imageURL)
                 }
                 return .doNothing
             case 401:
@@ -238,23 +251,77 @@ struct DriversLicenseView: View {
         }
     }
     
-    private func loadImageAsync(_ imageURL: URL) async {
+    private func loadDocumentAsync(_ imageURL: URL) async {
         do {
-            let (data, _) = try await URLSession.shared.data(from: imageURL)
-            #if canImport(UIKit)
-            if let image = UIImage(data: data) {
+            let (data, response) = try await URLSession.shared.data(from: imageURL)
+            let mimeType = (response as? HTTPURLResponse)?
+                .value(forHTTPHeaderField: "Content-Type")?
+                .lowercased() ?? ""
+            let isPdfByHeader = data.starts(with: [0x25, 0x50, 0x44, 0x46]) // "%PDF"
+            let isPdf = mimeType.contains("pdf") || isPdfByHeader
+            
+            if isPdf {
                 await MainActor.run {
-                    loadedImage = image
+                    loadedPdfData = data
+                    loadedImage = nil
+                    rotatedImageCache = [:]
+                    rotationQuarterTurns = 0
                 }
+                return
             }
-            #endif
+            
+            if let image = UIImage(data: data) {
+                let cache: [Int: UIImage] = [
+                    0: image,
+                    1: image.rotated(byQuarterTurns: 1),
+                    2: image.rotated(byQuarterTurns: 2),
+                    3: image.rotated(byQuarterTurns: 3)
+                ]
+                await MainActor.run {
+                    loadedPdfData = nil
+                    loadedImage = image
+                    rotatedImageCache = cache
+                }
+                return
+            }
+            
+            await MainActor.run {
+                loadedPdfData = nil
+                loadedImage = nil
+                rotatedImageCache = [:]
+                rotationQuarterTurns = 0
+                alertTitle = "Unsupported Document"
+                alertMessage = "This file is not a supported image or PDF."
+                showAlert = true
+            }
         } catch {
             // Keep placeholder when image cannot be loaded.
         }
     }
 }
 
-#if canImport(UIKit)
+private struct PDFDocumentContainerView: UIViewRepresentable {
+    let pdfData: Data
+    
+    func makeUIView(context: Context) -> PDFView {
+        let view = PDFView()
+        view.autoScales = true
+        view.displayMode = .singlePageContinuous
+        view.displayDirection = .vertical
+        view.backgroundColor = .clear
+        if let scrollView = view.subviews.compactMap({ $0 as? UIScrollView }).first {
+            scrollView.showsVerticalScrollIndicator = false
+            scrollView.showsHorizontalScrollIndicator = false
+        }
+        view.document = PDFDocument(data: pdfData)
+        return view
+    }
+    
+    func updateUIView(_ uiView: PDFView, context: Context) {
+        uiView.document = PDFDocument(data: pdfData)
+    }
+}
+
 private extension UIImage {
     func rotated(byQuarterTurns quarterTurns: Int) -> UIImage {
         let turns = ((quarterTurns % 4) + 4) % 4
@@ -284,4 +351,3 @@ private extension UIImage {
         }
     }
 }
-#endif
