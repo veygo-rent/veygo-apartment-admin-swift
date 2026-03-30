@@ -19,12 +19,49 @@ struct DriversLicenseView: View {
     @State private var rotatedImageCache: [Int: UIImage] = [:]
     @State private var isLoading = false
     @State private var rotationQuarterTurns: Int = 0
+    @State private var isSubmitting = false
+    
+    @State private var driversLicenseNumberInput: String = ""
+    @State private var driversLicenseStateRegionInput: String = ""
+    @State private var driversLicenseExpiration: Date = Date()
+    @State private var actionReasonInput: String = ""
+    @State private var renterStreetAddressInput: String = ""
+    @State private var renterExtendedAddressInput: String = ""
+    @State private var renterCityInput: String = ""
+    @State private var renterStateInput: String = ""
+    @State private var renterZipcodeInput: String = ""
+    @State private var selectedAction: VerifyAction = .approved
 
     @State private var showAlert: Bool = false
     @State private var toDismiss: Bool = false
     @State private var clearUserTriggered: Bool = false
     @State private var alertMessage: String = ""
     @State private var alertTitle: String = ""
+
+    private let driversLicenseStateRegionMaxLength = 6
+    
+    private enum VerifyAction: Hashable {
+        case declinePrimary
+        case declineSecondary
+        case requireSecondary
+        case approved
+    }
+    
+    private var availableActions: [VerifyAction] {
+        guard let renter else { return [] }
+        return renter.requiresSecondaryDriverLic
+            ? [.declineSecondary, .approved]
+            : [.declinePrimary, .requireSecondary, .approved]
+    }
+    
+    private func actionTitle(_ action: VerifyAction) -> String {
+        switch action {
+        case .declinePrimary: return "Decline Primary"
+        case .declineSecondary: return "Decline Secondary"
+        case .requireSecondary: return "Require Secondary"
+        case .approved: return "Approved"
+        }
+    }
     
     private var displayedImage: UIImage? {
         guard let loadedImage else {
@@ -89,20 +126,55 @@ struct DriversLicenseView: View {
                     ContentUnavailableView(
                         "No Driver's License",
                         systemImage: "doc.text.image",
-                        description: Text("Pull to refresh or try again.")
+                        description: Text("You are all caught up!")
                     )
                 }
-
-                if let renter {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(renter.name)
+                
+                if renter != nil {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Verification")
                             .font(.headline)
-                        Text(renter.studentEmail)
-                            .foregroundStyle(.secondary)
-                        Text(renter.phone)
-                            .foregroundStyle(.secondary)
+                        
+                        Picker("Action", selection: $selectedAction) {
+                            ForEach(availableActions, id: \.self) { action in
+                                Text(actionTitle(action)).tag(action)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        
+                        if selectedAction == .declinePrimary || selectedAction == .declineSecondary {
+                            TextInputField(placeholder: "Reason", text: $actionReasonInput)
+                        }
+                        
+                        if selectedAction == .requireSecondary {
+                            TextInputField(placeholder: "Reason", text: $actionReasonInput)
+                            TextInputField(placeholder: "Driver's License Number (optional)", text: $driversLicenseNumberInput)
+                            TextInputField(placeholder: "License State/Region (optional)", text: $driversLicenseStateRegionInput)
+                        }
+                        
+                        if selectedAction == .approved {
+                            TextInputField(placeholder: "Driver's License Number (optional)", text: $driversLicenseNumberInput)
+                            TextInputField(placeholder: "License State/Region (optional)", text: $driversLicenseStateRegionInput)
+                            
+                            DatePicker(
+                                "License Expiration",
+                                selection: $driversLicenseExpiration,
+                                displayedComponents: [.date]
+                            )
+                            .datePickerStyle(.compact)
+                            
+                            TextInputField(placeholder: "Street Address", text: $renterStreetAddressInput)
+                            TextInputField(placeholder: "Address 2 (optional)", text: $renterExtendedAddressInput)
+                            TextInputField(placeholder: "City", text: $renterCityInput)
+                            TextInputField(placeholder: "State", text: $renterStateInput)
+                            TextInputField(placeholder: "Zipcode", text: $renterZipcodeInput)
+                        }
+                        
+                        PrimaryButton(text: isSubmitting ? "Submitting..." : "Submit") {
+                            submitVerification(selectedAction)
+                        }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(isSubmitting || isLoading)
                     .padding()
                     .background(Color.cardBG)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -117,6 +189,11 @@ struct DriversLicenseView: View {
         .scrollIndicators(.hidden)
         .onAppear {
             requestNextRenter()
+        }
+        .onChange(of: driversLicenseStateRegionInput) { _, newValue in
+            if newValue.count > driversLicenseStateRegionMaxLength {
+                driversLicenseStateRegionInput = String(newValue.prefix(driversLicenseStateRegionMaxLength))
+            }
         }
         .alert(alertTitle, isPresented: $showAlert) {
             Button("OK") {
@@ -138,6 +215,49 @@ struct DriversLicenseView: View {
         Task {
             await ApiCallActor.shared.appendApi { token, userId in
                 await loadNextRenterNeedDlVerifyAsync(token, userId)
+            }
+        }
+    }
+    
+    private func submitVerification(_ action: VerifyAction) {
+        guard !isSubmitting, !isLoading, let renter else { return }
+        
+        let trimmedReason = actionReasonInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if (action == .declinePrimary || action == .declineSecondary || action == .requireSecondary) && trimmedReason.isEmpty {
+            alertTitle = "Reason Required"
+            alertMessage = "Please provide a reason for this action."
+            showAlert = true
+            return
+        }
+        
+        if action == .approved {
+            let street = renterStreetAddressInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            let city = renterCityInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            let state = renterStateInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            let zipcode = renterZipcodeInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            let extended = renterExtendedAddressInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            let hasAnyAddress = !street.isEmpty || !city.isEmpty || !state.isEmpty || !zipcode.isEmpty || !extended.isEmpty
+            let hasAllRequiredAddress = !street.isEmpty && !city.isEmpty && !state.isEmpty && !zipcode.isEmpty
+            if hasAnyAddress && !hasAllRequiredAddress {
+                alertTitle = "Address Incomplete"
+                alertMessage = "Provide street, city, state, and zipcode for renter address."
+                showAlert = true
+                return
+            }
+        }
+        
+        isSubmitting = true
+        Task {
+            await ApiCallActor.shared.appendApi { token, userId in
+                await verifyDriversLicenseAsync(
+                    token,
+                    userId,
+                    renterId: renter.id,
+                    action: action
+                )
+            }
+            await MainActor.run {
+                isSubmitting = false
             }
         }
     }
@@ -167,8 +287,7 @@ struct DriversLicenseView: View {
                 method: .get,
                 headers: [
                     "auth": "\(token)$\(userId)",
-                    "renter-type": "DriversLicense",
-                    "user-agent": "ios-admin-swift"
+                    "renter-type": "DriversLicense"
                 ]
             )
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -200,6 +319,21 @@ struct DriversLicenseView: View {
                     loadedPdfData = nil
                     rotatedImageCache = [:]
                     rotationQuarterTurns = 0
+                    selectedAction = decodedBody.renter.requiresSecondaryDriverLic ? .declineSecondary : .declinePrimary
+                    actionReasonInput = ""
+                    driversLicenseNumberInput = decodedBody.renter.driversLicenseNumber ?? ""
+                    driversLicenseStateRegionInput = decodedBody.renter.driversLicenseStateRegion ?? ""
+                    if let expiration = decodedBody.renter.driversLicenseExpiration,
+                       let parsedDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expiration) {
+                        driversLicenseExpiration = parsedDate
+                    } else {
+                        driversLicenseExpiration = Date()
+                    }
+                    renterStreetAddressInput = decodedBody.renter.billingAddress?.streetAddress ?? ""
+                    renterExtendedAddressInput = decodedBody.renter.billingAddress?.extendedAddress ?? ""
+                    renterCityInput = decodedBody.renter.billingAddress?.city ?? ""
+                    renterStateInput = decodedBody.renter.billingAddress?.state ?? ""
+                    renterZipcodeInput = decodedBody.renter.billingAddress?.zipcode ?? ""
                 }
                 if let imageURL = URL(string: decodedBody.fileLink.fileLink) {
                     await loadDocumentAsync(imageURL)
@@ -229,6 +363,232 @@ struct DriversLicenseView: View {
                     alertMessage = "All driver's licences are verified."
                     showAlert = true
                     toDismiss = true
+                }
+                return .doNothing
+            default:
+                let body = ErrorResponse.E_DEFAULT
+                await MainActor.run {
+                    alertTitle = body.title
+                    alertMessage = body.message
+                    showAlert = true
+                }
+                return .doNothing
+            }
+        } catch {
+            await MainActor.run {
+                let body = ErrorResponse.E_DEFAULT
+                alertTitle = body.title
+                alertMessage = body.message
+                showAlert = true
+            }
+            return .doNothing
+        }
+    }
+    
+    @ApiCallActor
+    private func verifyDriversLicenseAsync(
+        _ token: String,
+        _ userId: Int,
+        renterId: Int,
+        action: VerifyAction
+    ) async -> ApiTaskResponse {
+        do {
+            guard !token.isEmpty, userId > 0 else {
+                await MainActor.run {
+                    let decodedBody = ErrorResponse.E401
+                    alertTitle = decodedBody.title
+                    alertMessage = decodedBody.message
+                    showAlert = true
+                    clearUserTriggered = true
+                }
+                return .clearUser
+            }
+            
+            let requestBodyData: Data
+            let inputSnapshot = await MainActor.run {
+                (
+                    number: driversLicenseNumberInput.trimmingCharacters(in: .whitespacesAndNewlines),
+                    state: driversLicenseStateRegionInput.trimmingCharacters(in: .whitespacesAndNewlines),
+                    reason: actionReasonInput.trimmingCharacters(in: .whitespacesAndNewlines),
+                    expiration: driversLicenseExpiration,
+                    street: renterStreetAddressInput.trimmingCharacters(in: .whitespacesAndNewlines),
+                    extended: renterExtendedAddressInput.trimmingCharacters(in: .whitespacesAndNewlines),
+                    city: renterCityInput.trimmingCharacters(in: .whitespacesAndNewlines),
+                    stateAddress: renterStateInput.trimmingCharacters(in: .whitespacesAndNewlines),
+                    zipcode: renterZipcodeInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+            }
+            let number = inputSnapshot.number
+            let state = inputSnapshot.state
+            let reason = inputSnapshot.reason
+            let optionalNumber: String? = number.isEmpty ? nil : number
+            let optionalState: String? = state.isEmpty ? nil : state
+            
+            switch action {
+            case .declinePrimary:
+                struct DeclinePrimaryRequest: Encodable {
+                    let type = "decline_primary"
+                    let renterId: Int
+                    let reason: String
+                }
+                requestBodyData = try VeygoJsonStandard.shared.encoder.encode(
+                    DeclinePrimaryRequest(renterId: renterId, reason: reason)
+                )
+            case .declineSecondary:
+                struct DeclineSecondaryRequest: Encodable {
+                    let type = "decline_secondary"
+                    let renterId: Int
+                    let reason: String
+                }
+                requestBodyData = try VeygoJsonStandard.shared.encoder.encode(
+                    DeclineSecondaryRequest(renterId: renterId, reason: reason)
+                )
+            case .requireSecondary:
+                struct RequireSecondaryRequest: Encodable {
+                    let type = "require_secondary"
+                    let renterId: Int
+                    let reason: String
+                    let driversLicenseNumber: String?
+                    let driversLicenseStateRegion: String?
+                }
+                requestBodyData = try VeygoJsonStandard.shared.encoder.encode(
+                    RequireSecondaryRequest(
+                        renterId: renterId,
+                        reason: reason,
+                        driversLicenseNumber: optionalNumber,
+                        driversLicenseStateRegion: optionalState
+                    )
+                )
+            case .approved:
+                struct ApprovedRequest: Encodable {
+                    let type = "approved"
+                    let renterId: Int
+                    let driversLicenseNumber: String?
+                    let driversLicenseStateRegion: String?
+                    let driversLicenseExpiration: String
+                    let renterAddress: UsAddress?
+                }
+                let expiration = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.string(from: inputSnapshot.expiration)
+                let hasAnyAddress = !inputSnapshot.street.isEmpty
+                    || !inputSnapshot.extended.isEmpty
+                    || !inputSnapshot.city.isEmpty
+                    || !inputSnapshot.stateAddress.isEmpty
+                    || !inputSnapshot.zipcode.isEmpty
+                let billingAddress: UsAddress? = hasAnyAddress
+                    ? UsAddress(
+                        streetAddress: inputSnapshot.street,
+                        extendedAddress: inputSnapshot.extended.isEmpty ? nil : inputSnapshot.extended,
+                        city: inputSnapshot.city,
+                        state: inputSnapshot.stateAddress,
+                        zipcode: inputSnapshot.zipcode
+                    )
+                    : nil
+                requestBodyData = try VeygoJsonStandard.shared.encoder.encode(
+                    ApprovedRequest(
+                        renterId: renterId,
+                        driversLicenseNumber: optionalNumber,
+                        driversLicenseStateRegion: optionalState,
+                        driversLicenseExpiration: expiration,
+                        renterAddress: billingAddress
+                    )
+                )
+                if let JSONString = String(data: requestBodyData, encoding: String.Encoding.utf8) {
+                   print(JSONString)
+                }
+            }
+            
+            let request = veygoCurlRequest(
+                url: "/api/v1/admin/verify-drivers-license",
+                method: .patch,
+                headers: [
+                    "auth": "\(token)$\(userId)",
+                    "user-agent": "ios-admin-swift"
+                ],
+                body: requestBodyData
+            )
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                await MainActor.run {
+                    let body = ErrorResponse.WRONG_PROTOCOL
+                    alertTitle = body.title
+                    alertMessage = body.message
+                    showAlert = true
+                }
+                return .doNothing
+            }
+            
+            switch httpResponse.statusCode {
+            case 200:
+                guard let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(RenterNeedVerify.self, from: data) else {
+                    await MainActor.run {
+                        let body = ErrorResponse.E_DEFAULT
+                        alertTitle = body.title
+                        alertMessage = body.message
+                        showAlert = true
+                    }
+                    return .doNothing
+                }
+                await MainActor.run {
+                    renter = decodedBody.renter
+                    loadedImage = nil
+                    loadedPdfData = nil
+                    rotatedImageCache = [:]
+                    rotationQuarterTurns = 0
+                    selectedAction = decodedBody.renter.requiresSecondaryDriverLic ? .declineSecondary : .declinePrimary
+                    actionReasonInput = ""
+                    driversLicenseNumberInput = decodedBody.renter.driversLicenseNumber ?? ""
+                    driversLicenseStateRegionInput = decodedBody.renter.driversLicenseStateRegion ?? ""
+                    if let expiration = decodedBody.renter.driversLicenseExpiration,
+                       let parsedDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expiration) {
+                        driversLicenseExpiration = parsedDate
+                    } else {
+                        driversLicenseExpiration = Date()
+                    }
+                    renterStreetAddressInput = decodedBody.renter.billingAddress?.streetAddress ?? ""
+                    renterExtendedAddressInput = decodedBody.renter.billingAddress?.extendedAddress ?? ""
+                    renterCityInput = decodedBody.renter.billingAddress?.city ?? ""
+                    renterStateInput = decodedBody.renter.billingAddress?.state ?? ""
+                    renterZipcodeInput = decodedBody.renter.billingAddress?.zipcode ?? ""
+                }
+                if let fileURL = URL(string: decodedBody.fileLink.fileLink) {
+                    await loadDocumentAsync(fileURL)
+                }
+                return .doNothing
+            case 401:
+                if let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(ErrorResponse.self, from: data) {
+                    await MainActor.run {
+                        alertTitle = decodedBody.title
+                        alertMessage = decodedBody.message
+                        showAlert = true
+                        clearUserTriggered = true
+                    }
+                } else {
+                    let decodedBody = ErrorResponse.E401
+                    await MainActor.run {
+                        alertTitle = decodedBody.title
+                        alertMessage = decodedBody.message
+                        showAlert = true
+                        clearUserTriggered = true
+                    }
+                }
+                return .clearUser
+            case 404:
+                if let decodedBody = try? VeygoJsonStandard.shared.decoder.decode(ErrorResponse.self, from: data) {
+                    await MainActor.run {
+                        alertTitle = decodedBody.title
+                        alertMessage = decodedBody.message
+                        showAlert = true
+                        toDismiss = true
+                    }
+                } else {
+                    let decodedBody = ErrorResponse.E404
+                    await MainActor.run {
+                        alertTitle = decodedBody.title
+                        alertMessage = decodedBody.message
+                        showAlert = true
+                        toDismiss = true
+                    }
                 }
                 return .doNothing
             default:

@@ -12,6 +12,7 @@ public enum RequestMethods: String {
     case post = "POST"
     case put = "PUT"
     case delete = "DELETE"
+    case patch = "PATCH"
 }
 
 nonisolated public func veygoCurlRequest (url: String, method: RequestMethods, headers: [String: String] = [:], body: Data? = nil, timeout: TimeInterval = 10.0) -> URLRequest {
