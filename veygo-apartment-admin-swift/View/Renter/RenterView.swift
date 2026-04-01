@@ -173,9 +173,9 @@ struct RenterView: View {
         case .approveLicense:
             DriversLicenseView()
         case .approveLease:
-            RenterFeaturePlaceholderView(title: "Approve Lease")
+            LeaseView()
         case .approveInsurance:
-            RenterFeaturePlaceholderView(title: "Approve Insurance")
+            InsuranceView()
         case .lookupDoNotRent:
             RenterFeaturePlaceholderView(title: "Lookup Do-Not-Rent")
         }
