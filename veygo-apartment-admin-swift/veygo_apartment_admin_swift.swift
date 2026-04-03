@@ -9,8 +9,6 @@ import SwiftUI
 
 import UserNotifications
 
-@preconcurrency import Stripe
-
 @main
 struct veygo_apartment_swift: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate: AppDelegate
@@ -25,7 +23,6 @@ struct veygo_apartment_swift: App {
     @State private var didLoad = false
 
     init() {
-        StripeAPI.defaultPublishableKey = "pk_live_51QzCjkL87NN9tQEdbASm7SXLCkcDPiwlEbBpOVQk5wZcjOPISrtTVFfK1SFKIlqyoksRIHusp5UcRYJLvZwkyK0a00kdPmuxhM"
     }
 
     var body: some Scene {

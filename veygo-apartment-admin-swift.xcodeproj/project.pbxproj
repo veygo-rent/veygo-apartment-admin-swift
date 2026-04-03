@@ -6,10 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		8E3162B12E1B6DFF00FF1384 /* Stripe in Frameworks */ = {isa = PBXBuildFile; productRef = 8E3162B02E1B6DFF00FF1384 /* Stripe */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		8E31622A2E1B6D6D00FF1384 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -63,7 +59,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8E3162B12E1B6DFF00FF1384 /* Stripe in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,7 +126,6 @@
 			);
 			name = "veygo-apartment-admin-swift";
 			packageProductDependencies = (
-				8E3162B02E1B6DFF00FF1384 /* Stripe */,
 			);
 			productName = "veygo-apartment-admin-swift";
 			productReference = 8EF345102E1B6858001900A0 /* veygo-apartment-admin-swift.app */;
@@ -166,7 +160,6 @@
 			mainGroup = 8EF345072E1B6858001900A0;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				8E3162AF2E1B6DFF00FF1384 /* XCRemoteSwiftPackageReference "stripe-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8EF345112E1B6858001900A0 /* Products */;
@@ -430,7 +423,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -472,7 +465,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -515,25 +508,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		8E3162AF2E1B6DFF00FF1384 /* XCRemoteSwiftPackageReference "stripe-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/stripe/stripe-ios";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 25.8.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		8E3162B02E1B6DFF00FF1384 /* Stripe */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8E3162AF2E1B6DFF00FF1384 /* XCRemoteSwiftPackageReference "stripe-ios" */;
-			productName = Stripe;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8EF345082E1B6858001900A0 /* Project object */;
 }
