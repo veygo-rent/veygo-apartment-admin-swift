@@ -24,6 +24,7 @@ struct DriversLicenseView: View {
     @State private var driversLicenseNumberInput: String = ""
     @State private var driversLicenseStateRegionInput: String = ""
     @State private var driversLicenseExpiration: Date = Date()
+    @State private var driversLicenseExpirationInput: String = ""
     @State private var actionReasonInput: String = ""
     @State private var renterStreetAddressInput: String = ""
     @State private var renterExtendedAddressInput: String = ""
@@ -61,6 +62,31 @@ struct DriversLicenseView: View {
         case .requireSecondary: return "Require Secondary"
         case .approved: return "Approved"
         }
+    }
+    
+    private var parsedDriversLicenseExpirationInput: Date? {
+        let value = driversLicenseExpirationInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        return VeygoDatetimeStandard.shared.usStandardDateFormatter.date(from: value)
+    }
+    
+    private var isDriversLicenseExpirationInputValid: Bool {
+        let value = driversLicenseExpirationInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard value.count == 10 else { return false }
+        guard let parsed = parsedDriversLicenseExpirationInput else { return false }
+        return VeygoDatetimeStandard.shared.usStandardDateFormatter.string(from: parsed) == value
+    }
+    
+    private func formattedUsDateInput(_ input: String) -> String {
+        let digits = input.filter { $0.isNumber }
+        var formatted = ""
+        for (index, char) in digits.enumerated() {
+            if index == 2 || index == 4 {
+                formatted.append("/")
+            }
+            if index >= 8 { break }
+            formatted.append(char)
+        }
+        return formatted
     }
     
     private var displayedImage: UIImage? {
@@ -155,13 +181,7 @@ struct DriversLicenseView: View {
                         if selectedAction == .approved {
                             TextInputField(placeholder: "Driver's License Number (optional)", text: $driversLicenseNumberInput)
                             TextInputField(placeholder: "License State/Region (optional)", text: $driversLicenseStateRegionInput)
-                            
-                            DatePicker(
-                                "License Expiration",
-                                selection: $driversLicenseExpiration,
-                                displayedComponents: [.date]
-                            )
-                            .datePickerStyle(.compact)
+                            TextInputField(placeholder: "License Expiration (MM/DD/YYYY)", text: $driversLicenseExpirationInput)
                             
                             TextInputField(placeholder: "Street Address", text: $renterStreetAddressInput)
                             TextInputField(placeholder: "Address 2 (optional)", text: $renterExtendedAddressInput)
@@ -173,6 +193,7 @@ struct DriversLicenseView: View {
                         PrimaryButton(text: isSubmitting ? "Submitting..." : "Submit") {
                             submitVerification(selectedAction)
                         }
+                        .disabled(selectedAction == .approved && !isDriversLicenseExpirationInputValid)
                     }
                     .disabled(isSubmitting || isLoading)
                     .padding()
@@ -193,6 +214,12 @@ struct DriversLicenseView: View {
         .onChange(of: driversLicenseStateRegionInput) { _, newValue in
             if newValue.count > driversLicenseStateRegionMaxLength {
                 driversLicenseStateRegionInput = String(newValue.prefix(driversLicenseStateRegionMaxLength))
+            }
+        }
+        .onChange(of: driversLicenseExpirationInput) { _, newValue in
+            let formatted = formattedUsDateInput(newValue)
+            if formatted != newValue {
+                driversLicenseExpirationInput = formatted
             }
         }
         .alert(alertTitle, isPresented: $showAlert) {
@@ -231,6 +258,14 @@ struct DriversLicenseView: View {
         }
         
         if action == .approved {
+            guard let parsedExpiration = parsedDriversLicenseExpirationInput else {
+                alertTitle = "Invalid Date"
+                alertMessage = "Use MM/DD/YYYY for license expiration."
+                showAlert = true
+                return
+            }
+            driversLicenseExpiration = parsedExpiration
+            
             let street = renterStreetAddressInput.trimmingCharacters(in: .whitespacesAndNewlines)
             let city = renterCityInput.trimmingCharacters(in: .whitespacesAndNewlines)
             let state = renterStateInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -326,8 +361,10 @@ struct DriversLicenseView: View {
                     if let expiration = decodedBody.renter.driversLicenseExpiration,
                        let parsedDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expiration) {
                         driversLicenseExpiration = parsedDate
+                        driversLicenseExpirationInput = VeygoDatetimeStandard.shared.usStandardDateFormatter.string(from: parsedDate)
                     } else {
                         driversLicenseExpiration = Date()
+                        driversLicenseExpirationInput = ""
                     }
                     renterStreetAddressInput = decodedBody.renter.billingAddress?.streetAddress ?? ""
                     renterExtendedAddressInput = decodedBody.renter.billingAddress?.extendedAddress ?? ""
@@ -542,8 +579,10 @@ struct DriversLicenseView: View {
                     if let expiration = decodedBody.renter.driversLicenseExpiration,
                        let parsedDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expiration) {
                         driversLicenseExpiration = parsedDate
+                        driversLicenseExpirationInput = VeygoDatetimeStandard.shared.usStandardDateFormatter.string(from: parsedDate)
                     } else {
                         driversLicenseExpiration = Date()
+                        driversLicenseExpirationInput = ""
                     }
                     renterStreetAddressInput = decodedBody.renter.billingAddress?.streetAddress ?? ""
                     renterExtendedAddressInput = decodedBody.renter.billingAddress?.extendedAddress ?? ""

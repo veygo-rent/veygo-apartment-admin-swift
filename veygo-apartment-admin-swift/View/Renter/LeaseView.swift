@@ -24,6 +24,7 @@ struct LeaseView: View {
     @State private var selectedAction: VerifyLeaseAction = .declined
     @State private var actionReasonInput: String = ""
     @State private var leaseExpiration: Date = Date()
+    @State private var leaseExpirationInput: String = ""
     @State private var renterStreetAddressInput: String = ""
     @State private var renterExtendedAddressInput: String = ""
     @State private var renterCityInput: String = ""
@@ -39,6 +40,31 @@ struct LeaseView: View {
     private enum VerifyLeaseAction: Hashable {
         case declined
         case approved
+    }
+    
+    private var parsedLeaseExpirationInput: Date? {
+        let value = leaseExpirationInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        return VeygoDatetimeStandard.shared.usStandardDateFormatter.date(from: value)
+    }
+    
+    private var isLeaseExpirationInputValid: Bool {
+        let value = leaseExpirationInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard value.count == 10 else { return false }
+        guard let parsed = parsedLeaseExpirationInput else { return false }
+        return VeygoDatetimeStandard.shared.usStandardDateFormatter.string(from: parsed) == value
+    }
+    
+    private func formattedUsDateInput(_ input: String) -> String {
+        let digits = input.filter { $0.isNumber }
+        var formatted = ""
+        for (index, char) in digits.enumerated() {
+            if index == 2 || index == 4 {
+                formatted.append("/")
+            }
+            if index >= 8 { break }
+            formatted.append(char)
+        }
+        return formatted
     }
 
     private var displayedImage: UIImage? {
@@ -139,12 +165,7 @@ struct LeaseView: View {
                         }
 
                         if selectedAction == .approved {
-                            DatePicker(
-                                "Lease Expiration",
-                                selection: $leaseExpiration,
-                                displayedComponents: [.date]
-                            )
-                            .datePickerStyle(.compact)
+                            TextInputField(placeholder: "Lease Expiration (MM/DD/YYYY)", text: $leaseExpirationInput)
 
                             TextInputField(placeholder: "Street Address", text: $renterStreetAddressInput)
                             TextInputField(placeholder: "Extended Address (optional)", text: $renterExtendedAddressInput)
@@ -156,6 +177,7 @@ struct LeaseView: View {
                         PrimaryButton(text: isSubmitting ? "Submitting..." : "Submit") {
                             submitVerification(selectedAction)
                         }
+                        .disabled(selectedAction == .approved && !isLeaseExpirationInputValid)
                     }
                     .disabled(isSubmitting || isLoading)
                     .padding()
@@ -172,6 +194,12 @@ struct LeaseView: View {
         .scrollIndicators(.hidden)
         .onAppear {
             requestNextRenter()
+        }
+        .onChange(of: leaseExpirationInput) { _, newValue in
+            let formatted = formattedUsDateInput(newValue)
+            if formatted != newValue {
+                leaseExpirationInput = formatted
+            }
         }
         .alert(alertTitle, isPresented: $showAlert) {
             Button("OK") {
@@ -211,6 +239,14 @@ struct LeaseView: View {
         }
 
         if action == .approved {
+            guard let parsedExpiration = parsedLeaseExpirationInput else {
+                alertTitle = "Invalid Date"
+                alertMessage = "Use MM/DD/YYYY for lease expiration."
+                showAlert = true
+                return
+            }
+            leaseExpiration = parsedExpiration
+            
             let street = renterStreetAddressInput.trimmingCharacters(in: .whitespacesAndNewlines)
             let city = renterCityInput.trimmingCharacters(in: .whitespacesAndNewlines)
             let state = renterStateInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -303,8 +339,10 @@ struct LeaseView: View {
                     if let expiration = decodedBody.renter.leaseAgreementExpiration,
                        let parsedDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expiration) {
                         leaseExpiration = parsedDate
+                        leaseExpirationInput = VeygoDatetimeStandard.shared.usStandardDateFormatter.string(from: parsedDate)
                     } else {
                         leaseExpiration = Date()
+                        leaseExpirationInput = ""
                     }
                     renterStreetAddressInput = decodedBody.renter.billingAddress?.streetAddress ?? ""
                     renterExtendedAddressInput = decodedBody.renter.billingAddress?.extendedAddress ?? ""
@@ -485,8 +523,10 @@ struct LeaseView: View {
                     if let expiration = decodedBody.renter.leaseAgreementExpiration,
                        let parsedDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expiration) {
                         leaseExpiration = parsedDate
+                        leaseExpirationInput = VeygoDatetimeStandard.shared.usStandardDateFormatter.string(from: parsedDate)
                     } else {
                         leaseExpiration = Date()
+                        leaseExpirationInput = ""
                     }
                     renterStreetAddressInput = decodedBody.renter.billingAddress?.streetAddress ?? ""
                     renterExtendedAddressInput = decodedBody.renter.billingAddress?.extendedAddress ?? ""

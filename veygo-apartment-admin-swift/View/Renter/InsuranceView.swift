@@ -24,6 +24,7 @@ struct InsuranceView: View {
     @State private var selectedAction: VerifyInsuranceAction = .declined
     @State private var actionReasonInput: String = ""
     @State private var insuranceLiabilityExpiration: Date = Date()
+    @State private var insuranceLiabilityExpirationInput: String = ""
     @State private var insuranceCollisionValid: Bool = false
 
     @State private var showAlert: Bool = false
@@ -35,6 +36,31 @@ struct InsuranceView: View {
     private enum VerifyInsuranceAction: Hashable {
         case declined
         case approved
+    }
+    
+    private var parsedInsuranceLiabilityExpirationInput: Date? {
+        let value = insuranceLiabilityExpirationInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        return VeygoDatetimeStandard.shared.usStandardDateFormatter.date(from: value)
+    }
+    
+    private var isInsuranceLiabilityExpirationInputValid: Bool {
+        let value = insuranceLiabilityExpirationInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard value.count == 10 else { return false }
+        guard let parsed = parsedInsuranceLiabilityExpirationInput else { return false }
+        return VeygoDatetimeStandard.shared.usStandardDateFormatter.string(from: parsed) == value
+    }
+    
+    private func formattedUsDateInput(_ input: String) -> String {
+        let digits = input.filter { $0.isNumber }
+        var formatted = ""
+        for (index, char) in digits.enumerated() {
+            if index == 2 || index == 4 {
+                formatted.append("/")
+            }
+            if index >= 8 { break }
+            formatted.append(char)
+        }
+        return formatted
     }
 
     private var displayedImage: UIImage? {
@@ -135,12 +161,7 @@ struct InsuranceView: View {
                         }
 
                         if selectedAction == .approved {
-                            DatePicker(
-                                "Liability Expiration",
-                                selection: $insuranceLiabilityExpiration,
-                                displayedComponents: [.date]
-                            )
-                            .datePickerStyle(.compact)
+                            TextInputField(placeholder: "Liability Expiration (MM/DD/YYYY)", text: $insuranceLiabilityExpirationInput)
 
                             Toggle("Collision Valid", isOn: $insuranceCollisionValid)
                         }
@@ -148,6 +169,7 @@ struct InsuranceView: View {
                         PrimaryButton(text: isSubmitting ? "Submitting..." : "Submit") {
                             submitVerification(selectedAction)
                         }
+                        .disabled(selectedAction == .approved && !isInsuranceLiabilityExpirationInputValid)
                     }
                     .disabled(isSubmitting || isLoading)
                     .padding()
@@ -164,6 +186,12 @@ struct InsuranceView: View {
         .scrollIndicators(.hidden)
         .onAppear {
             requestNextRenter()
+        }
+        .onChange(of: insuranceLiabilityExpirationInput) { _, newValue in
+            let formatted = formattedUsDateInput(newValue)
+            if formatted != newValue {
+                insuranceLiabilityExpirationInput = formatted
+            }
         }
         .alert(alertTitle, isPresented: $showAlert) {
             Button("OK") {
@@ -200,6 +228,16 @@ struct InsuranceView: View {
                 showAlert = true
                 return
             }
+        }
+        
+        if action == .approved {
+            guard let parsedExpiration = parsedInsuranceLiabilityExpirationInput else {
+                alertTitle = "Invalid Date"
+                alertMessage = "Use MM/DD/YYYY for liability expiration."
+                showAlert = true
+                return
+            }
+            insuranceLiabilityExpiration = parsedExpiration
         }
 
         isSubmitting = true
@@ -281,8 +319,10 @@ struct InsuranceView: View {
                     if let expiration = decodedBody.renter.insuranceLiabilityExpiration,
                        let parsedDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expiration) {
                         insuranceLiabilityExpiration = parsedDate
+                        insuranceLiabilityExpirationInput = VeygoDatetimeStandard.shared.usStandardDateFormatter.string(from: parsedDate)
                     } else {
                         insuranceLiabilityExpiration = Date()
+                        insuranceLiabilityExpirationInput = ""
                     }
                     insuranceCollisionValid = decodedBody.renter.insuranceCollisionValid
                 }
@@ -448,8 +488,10 @@ struct InsuranceView: View {
                     if let expiration = decodedBody.renter.insuranceLiabilityExpiration,
                        let parsedDate = VeygoDatetimeStandard.shared.yyyyMMddDateFormatter.date(from: expiration) {
                         insuranceLiabilityExpiration = parsedDate
+                        insuranceLiabilityExpirationInput = VeygoDatetimeStandard.shared.usStandardDateFormatter.string(from: parsedDate)
                     } else {
                         insuranceLiabilityExpiration = Date()
+                        insuranceLiabilityExpirationInput = ""
                     }
                     insuranceCollisionValid = decodedBody.renter.insuranceCollisionValid
                 }
