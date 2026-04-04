@@ -202,6 +202,7 @@ struct DriversLicenseView: View {
                 }
             }
             .padding(20)
+            .frame(maxWidth: .infinity)
         }
         .scrollContentBackground(.hidden)
         .background(Color.mainBG)
