@@ -156,6 +156,21 @@ struct DriversLicenseView: View {
                     )
                 }
                 
+                if let renter {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(renter.name)
+                            .font(.headline)
+                        Text(renter.studentEmail)
+                            .foregroundStyle(.secondary)
+                        Text(renter.phone)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(Color.cardBG)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                
                 if renter != nil {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Verification")
