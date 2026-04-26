@@ -169,7 +169,7 @@ struct RenterView: View {
     private func destinationView(for destination: RenterDestination) -> some View {
         switch destination {
         case .lookupRenter:
-            RenterFeaturePlaceholderView(title: "Look Up Renter")
+            LookUpRenterView()
         case .approveLicense:
             DriversLicenseView()
         case .approveLease:
@@ -177,7 +177,7 @@ struct RenterView: View {
         case .approveInsurance:
             InsuranceView()
         case .lookupDoNotRent:
-            RenterFeaturePlaceholderView(title: "Lookup Do-Not-Rent")
+            LookUpDoNotRentView()
         }
     }
 
